@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan - FB Auto Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .setting-card { transition: all 0.3s ease; }
+        .setting-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-gray-900 text-white fixed">
+            <div class="p-6">
+                <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            <nav class="mt-6">
+                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-home w-6"></i> Dashboard
+                </a>
+                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-users w-6"></i> Akun
+                </a>
+                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-user-friends w-6"></i> Grup
+                </a>
+                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-paper-plane w-6"></i> Posting
+                </a>
+                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-clock w-6"></i> Jadwal
+                </a>
+                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-file-alt w-6"></i> Template
+                </a>
+                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-history w-6"></i> Riwayat
+                </a>
+                <a href="settings.html" class="block py-3 px-6 bg-blue-600">
+                    <i class="fas fa-cog w-6"></i> Pengaturan
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Header -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">Pengaturan</h2>
+                <p class="text-gray-600">Konfigurasi aplikasi FB Auto Poster Pro</p>
+            </div>
+
+            <!-- Settings Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- General Settings -->
+                <div class="setting-card bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <i class="fas fa-cog text-blue-600 mr-2"></i> Umum
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Nama Aplikasi</label>
+                            <input type="text" id="appName" class="w-full border rounded-lg px-3 py-2" value="FB Auto Poster Pro">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Timezone</label>
+                            <select id="timezone" class="w-full border rounded-lg px-3 py-2">
+                                <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                                <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
+                                <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
+                                <option value="UTC">UTC</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Bahasa</label>
+                            <select id="language" class="w-full border rounded-lg px-3 py-2">
+                                <option value="id">Bahasa Indonesia</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Posting Settings -->
+                <div class="setting-card bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <i class="fas fa-paper-plane text-green-600 mr-2"></i> Posting
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Maksimal Posting per Hari</label>
+                            <input type="number" id="maxDailyPosts" class="w-full border rounded-lg px-3 py-2" value="50" min="1" max="200">
+                            <p class="text-xs text-gray-500 mt-1">Batas posting per akun per hari untuk menghindari blokir</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Interval Minimum (menit)</label>
+                            <input type="number" id="minInterval" class="w-full border rounded-lg px-3 py-2" value="2" min="1" max="60">
+                            <p class="text-xs text-gray-500 mt-1">Interval minimum antar posting dalam menit</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Delay Variasi (detik)</label>
+                            <input type="number" id="delayVariation" class="w-full border rounded-lg px-3 py-2" value="30" min="0" max="300">
+                            <p class="text-xs text-gray-500 mt-1">Variasi delay acak untuk anti-deteksi</p>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="spamProtection" class="mr-2" checked>
+                            <label class="text-sm font-medium">Aktifkan Proteksi Spam</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Browser Settings -->
+                <div class="setting-card bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <i class="fas fa-globe text-purple-600 mr-2"></i> Browser
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">User Agent</label>
+                            <select id="userAgent" class="w-full border rounded-lg px-3 py-2">
+                                <option value="chrome">Chrome (Windows)</option>
+                                <option value="firefox">Firefox (Windows)</option>
+                                <option value="edge">Edge (Windows)</option>
+                                <option value="safari">Safari (Mac)</option>
+                                <option value="mobile">Mobile Chrome</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Viewport</label>
+                            <select id="viewport" class="w-full border rounded-lg px-3 py-2">
+                                <option value="1920x1080">1920x1080 (Desktop)</option>
+                                <option value="1366x768">1366x768 (Laptop)</option>
+                                <option value="1440x900">1440x900 (Mac)</option>
+                                <option value="375x667">375x667 (Mobile)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="headless" class="mr-2">
+                            <label class="text-sm font-medium">Mode Headless (tanpa UI)</label>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="stealthMode" class="mr-2" checked>
+                            <label class="text-sm font-medium">Aktifkan Stealth Mode</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div class="setting-card bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <i class="fas fa-bell text-yellow-600 mr-2"></i> Notifikasi
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-sm font-medium">Notifikasi Desktop</label>
+                                <p class="text-xs text-gray-500">Tampilkan notifikasi saat posting selesai</p>
+                            </div>
+                            <input type="checkbox" id="desktopNotif" class="toggle" checked>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-sm font-medium">Suara Notifikasi</label>
+                                <p class="text-xs text-gray-500">Mainkan suara saat ada notifikasi</p>
+                            </div>
+                            <input type="checkbox" id="soundNotif" class="toggle">
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-sm font-medium">Email Notifikasi</label>
+                                <p class="text-xs text-gray-500">Kirim email saat posting gagal</p>
+                            </div>
+                            <input type="checkbox" id="emailNotif" class="toggle">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Email</label>
+                            <input type="email" id="emailAddress" class="w-full border rounded-lg px-3 py-2" placeholder="your@email.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management -->
+                <div class="setting-card bg-white rounded-lg shadow p-6 lg:col-span-2">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <i class="fas fa-database text-red-600 mr-2"></i> Manajemen Data
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border rounded-lg p-4">
+                            <h4 class="font-medium mb-2">Backup Data</h4>
+                            <p class="text-sm text-gray-500 mb-3">Export semua data ke file JSON</p>
+                            <button onclick="backupData()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                                <i class="fas fa-download mr-2"></i>Backup
+                            </button>
+                        </div>
+                        
+                        <div class="border rounded-lg p-4">
+                            <h4 class="font-medium mb-2">Restore Data</h4>
+                            <p class="text-sm text-gray-500 mb-3">Import data dari file backup</p>
+                            <input type="file" id="restoreFile" accept=".json" class="hidden" onchange="restoreData(this)">
+                            <button onclick="document.getElementById('restoreFile').click()" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
+                                <i class="fas fa-upload mr-2"></i>Restore
+                            </button>
+                        </div>
+                        
+                        <div class="border rounded-lg p-4">
+                            <h4 class="font-medium mb-2 text-red-600">Reset Data</h4>
+                            <p class="text-sm text-gray-500 mb-3">Hapus semua data (hati-hati!)</p>
+                            <button onclick="resetData()" class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700">
+                                <i class="fas fa-trash mr-2"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="fixed bottom-6 right-6">
+                <button onclick="saveSettings()" class="bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-blue-700 flex items-center">
+                    <i class="fas fa-save mr-2"></i> Simpan Pengaturan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load settings on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+        });
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (data.success && data.settings) {
+                    const s = data.settings;
+                    if (s.app_name) document.getElementById('appName').value = s.app_name;
+                    if (s.timezone) document.getElementById('timezone').value = s.timezone;
+                    if (s.max_daily_posts) document.getElementById('maxDailyPosts').value = s.max_daily_posts;
+                    if (s.post_interval_min) document.getElementById('minInterval').value = s.post_interval_min;
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        async function saveSettings() {
+            const settings = {
+                app_name: document.getElementById('appName').value,
+                timezone: document.getElementById('timezone').value,
+                language: document.getElementById('language').value,
+                max_daily_posts: document.getElementById('maxDailyPosts').value,
+                post_interval_min: document.getElementById('minInterval').value,
+                delay_variation: document.getElementById('delayVariation').value,
+                spam_protection: document.getElementById('spamProtection').checked,
+                user_agent: document.getElementById('userAgent').value,
+                viewport: document.getElementById('viewport').value,
+                headless: document.getElementById('headless').checked,
+                stealth_mode: document.getElementById('stealthMode').checked,
+                desktop_notification: document.getElementById('desktopNotif').checked,
+                sound_notification: document.getElementById('soundNotif').checked,
+                email_notification: document.getElementById('emailNotif').checked,
+                email_address: document.getElementById('emailAddress').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Pengaturan berhasil disimpan!', 'success');
+                } else {
+                    showNotification('Gagal menyimpan pengaturan', 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function backupData() {
+            try {
+                const response = await fetch('/api/backup');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `fb-poster-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showNotification('Backup berhasil diunduh', 'success');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function restoreData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    
+                    const response = await fetch('/api/restore', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(backup)
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        showNotification('Restore berhasil!', 'success');
+                    } else {
+                        showNotification('Gagal restore: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    showNotification('Error: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function resetData() {
+            if (!confirm('PERINGATAN: Semua data akan dihapus permanen!\n\nYakin ingin melanjutkan?')) return;
+            if (!confirm('Konfirmasi terakhir: Data yang dihapus TIDAK BISA dikembalikan.\n\nLanjutkan?')) return;
+            
+            try {
+                const response = await fetch('/api/reset', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Semua data telah direset', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            // Simple notification
+            const div = document.createElement('div');
+            div.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-600 text-white' :
+                type === 'error' ? 'bg-red-600 text-white' :
+                'bg-blue-600 text-white'
+            }`;
+            div.textContent = message;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Facebook session cookies - RAWAN, tidak boleh di-commit
+fb_cookies.json
+
+# Database files - berisi data sensitif (cookies, akun, history)
+*.db
+*.sqlite
+*.sqlite3
+
+# Image uploads (file pribadi user)
+img/
+web-dashboard/uploads/
+web-dashboard/uploads/*
+
+# Environment files
+.env
+.env.*
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug screenshots
+*.png
+!README*.png

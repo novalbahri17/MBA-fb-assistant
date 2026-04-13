@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FB Auto Poster Pro v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .sidebar { transition: all 0.3s; }
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar fixed left-0 top-0 h-full w-64 bg-gray-900 text-white z-50">
+            <div class="p-6">
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fab fa-facebook text-blue-500"></i>
+                    FB Auto Poster
+                </h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            
+            <nav class="mt-6">
+                <a href="index.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-blue-500 bg-gray-800">
+                    <i class="fas fa-chart-line w-6"></i> Dashboard
+                </a>
+                <a href="accounts.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
+                    <i class="fas fa-users w-6"></i> Akun Facebook
+                </a>
+                <a href="groups.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
+                    <i class="fas fa-user-friends w-6"></i> Grup
+                </a>
+                <a href="post.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
+                    <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                </a>
+                <a href="scheduled.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
+                    <i class="fas fa-calendar-alt w-6"></i> Jadwal Posting
+                </a>
+                <a href="templates.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
+                    <i class="fas fa-file-alt w-6"></i> Template
+                </a>
+                <a href="history.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
+                    <i class="fas fa-history w-6"></i> Riwayat
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-6">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <p class="text-xs text-gray-400">Status Database</p>
+                    <p class="text-sm font-semibold text-green-400 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        Connected
+                    </p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="ml-64 min-h-screen">
+            <!-- Header -->
+            <header class="bg-white shadow-sm sticky top-0 z-40">
+                <div class="flex items-center justify-between px-8 py-4">
+                    <h2 id="page-title" class="text-2xl font-bold text-gray-800">Dashboard</h2>
+                    <div class="flex items-center gap-4">
+                        <button class="p-2 text-gray-600 hover:text-blue-600 transition-colors">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        <button class="p-2 text-gray-600 hover:text-blue-600 transition-colors">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div id="content-area" class="p-8">
+                <!-- Dashboard Content -->
+                <div id="dashboard-page" class="page-content">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Total Akun</p>
+                                    <p id="stat-accounts" class="text-3xl font-bold text-gray-800">-</p>
+                                </div>
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-users text-blue-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Akun Aktif</p>
+                                    <p id="stat-active" class="text-3xl font-bold text-green-600">-</p>
+                                </div>
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Terjadwal</p>
+                                    <p id="stat-scheduled" class="text-3xl font-bold text-purple-600">-</p>
+                                </div>
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-calendar text-purple-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Posting Hari Ini</p>
+                                    <p id="stat-today" class="text-3xl font-bold text-orange-600">-</p>
+                                </div>
+                                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-paper-plane text-orange-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Aktivitas 7 Hari Terakhir</h3>
+                            <canvas id="activityChart" height="200"></canvas>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Distribusi Status Posting</h3>
+                            <canvas id="statusChart" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Aksi Cepat</h3>
+                            <div class="space-y-3">
+                                <a href="post.html" class="block p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-plus-circle text-blue-600 text-2xl mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Post Sekarang</p>
+                                            <p class="text-sm text-gray-500">Posting ke grup</p>
+                                        </div>
+                                    </div>
+                                </a>
+                                <a href="scheduled.html" class="block p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-calendar-plus text-purple-600 text-2xl mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Jadwalkan</p>
+                                            <p class="text-sm text-gray-500">Atur postingan</p>
+                                        </div>
+                                    </div>
+                                </a>
+                                <a href="accounts.html" class="block p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-user-plus text-green-600 text-2xl mr-3"></i>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Tambah Akun</p>
+                                            <p class="text-sm text-gray-500">Connect Facebook</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Postingan Terjadwal</h3>
+                            <div id="upcoming-scheduled" class="space-y-3">
+                                <p class="text-gray-500 text-center py-4">Memuat...</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Statistik Cepat</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-600">Success Rate</span>
+                                    <span id="quick-success-rate" class="font-bold text-green-600">-</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-600">Total Posts</span>
+                                    <span id="quick-total-posts" class="font-bold text-blue-600">-</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-gray-600">This Week</span>
+                                    <span id="quick-this-week" class="font-bold text-purple-600">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other pages will be loaded dynamically -->
+                <div id="other-pages" class="hidden">
+                    <p class="text-gray-500">Halaman sedang dikembangkan...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Navigation
+        function showPage(pageName) {
+            document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('bg-gray-800', 'border-blue-500');
+                el.classList.add('border-transparent');
+            });
+            
+            const pageEl = document.getElementById(pageName + '-page') || document.getElementById('other-pages');
+            pageEl.classList.remove('hidden');
+            
+            const navLink = document.querySelector(`a[href="#${pageName}"]`);
+            if (navLink) {
+                navLink.classList.add('bg-gray-800', 'border-blue-500');
+                navLink.classList.remove('border-transparent');
+            }
+            
+            document.getElementById('page-title').textContent = 
+                pageName.charAt(0).toUpperCase() + pageName.slice(1);
+        }
+
+        // Load dashboard stats
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/dashboard-stats');
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('stat-accounts').textContent = data.stats.totalAccounts;
+                    document.getElementById('stat-active').textContent = data.stats.activeAccounts;
+                    document.getElementById('stat-scheduled').textContent = data.stats.pendingScheduled;
+                    document.getElementById('stat-today').textContent = data.stats.publishedToday;
+                }
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        // Load scheduled posts
+        async function loadScheduled() {
+            try {
+                const res = await fetch('/api/scheduled-posts?status=scheduled');
+                const data = await res.json();
+                
+                const container = document.getElementById('upcoming-scheduled');
+                if (data.success && data.posts.length > 0) {
+                    container.innerHTML = data.posts.slice(0, 3).map(post => `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-800">${post.post_type}</p>
+                                <p class="text-sm text-gray-500">${new Date(post.schedule_time).toLocaleString('id-ID')}</p>
+                            </div>
+                            <span class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-sm">Scheduled</span>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">Tidak ada postingan terjadwal</p>';
+                }
+            } catch (e) {
+                console.error('Failed to load scheduled:', e);
+            }
+        }
+
+        // Load charts
+        async function loadCharts() {
+            try {
+                // Load daily stats
+                const res = await fetch('/api/post-history/daily?days=7');
+                const data = await res.json();
+                
+                if (data.success && data.daily) {
+                    const ctx = document.getElementById('activityChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.daily.map(d => new Date(d.date).toLocaleDateString('id-ID', { weekday: 'short' })).reverse(),
+                            datasets: [{
+                                label: 'Berhasil',
+                                data: data.daily.map(d => d.success).reverse(),
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }, {
+                                label: 'Gagal',
+                                data: data.daily.map(d => d.failed).reverse(),
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { position: 'bottom' } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                }
+                
+                // Load post history stats for doughnut chart
+                const statsRes = await fetch('/api/post-history/stats');
+                const statsData = await statsRes.json();
+                
+                if (statsData.success && statsData.stats) {
+                    const s = statsData.stats;
+                    const ctx2 = document.getElementById('statusChart').getContext('2d');
+                    new Chart(ctx2, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Berhasil', 'Gagal', 'Pending'],
+                            datasets: [{
+                                data: [s.success || 0, s.failed || 0, s.pending || 0],
+                                backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { position: 'bottom' } }
+                        }
+                    });
+                    
+                    // Update quick stats
+                    document.getElementById('quick-success-rate').textContent = 
+                        s.total > 0 ? Math.round((s.success / s.total) * 100) + '%' : '0%';
+                    document.getElementById('quick-total-posts').textContent = s.total || 0;
+                    document.getElementById('quick-this-week').textContent = s.this_week || 0;
+                }
+            } catch (e) {
+                console.error('Failed to load charts:', e);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadScheduled();
+            loadCharts();
+        });
+    </script>
+</body>
+</html>

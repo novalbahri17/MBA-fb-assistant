@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Posting - FB Auto Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .status-scheduled { background: #dbeafe; color: #1e40af; }
+        .status-processing { background: #fef3c7; color: #92400e; }
+        .status-published { background: #d1fae5; color: #065f46; }
+        .status-failed { background: #fee2e2; color: #991b1b; }
+        .status-cancelled { background: #f3f4f6; color: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-gray-900 text-white fixed">
+            <div class="p-6">
+                <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            <nav class="mt-6">
+                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-home w-6"></i> Dashboard
+                </a>
+                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-users w-6"></i> Akun
+                </a>
+                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-user-friends w-6"></i> Grup
+                </a>
+                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-paper-plane w-6"></i> Posting
+                </a>
+                <a href="scheduled.html" class="block py-3 px-6 bg-blue-600">
+                    <i class="fas fa-clock w-6"></i> Jadwal
+                </a>
+                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-file-alt w-6"></i> Template
+                </a>
+                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-history w-6"></i> Riwayat
+                </a>
+                <a href="settings.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-cog w-6"></i> Pengaturan
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Jadwal Posting</h2>
+                    <p class="text-gray-600">Kelola postingan yang dijadwalkan</p>
+                </div>
+                <a href="post.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-plus mr-2"></i>Buat Jadwal Baru
+                </a>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-5 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4 text-center">
+                    <p class="text-2xl font-bold" id="stat-total">0</p>
+                    <p class="text-sm text-gray-500">Total</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4 text-center">
+                    <p class="text-2xl font-bold text-blue-600" id="stat-scheduled">0</p>
+                    <p class="text-sm text-gray-500">Terjadwal</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4 text-center">
+                    <p class="text-2xl font-bold text-yellow-600" id="stat-processing">0</p>
+                    <p class="text-sm text-gray-500">Processing</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4 text-center">
+                    <p class="text-2xl font-bold text-green-600" id="stat-published">0</p>
+                    <p class="text-sm text-gray-500">Published</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4 text-center">
+                    <p class="text-2xl font-bold text-red-600" id="stat-failed">0</p>
+                    <p class="text-sm text-gray-500">Failed</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <select id="accountFilter" onchange="loadScheduled()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Akun</option>
+                    </select>
+                    <select id="statusFilter" onchange="loadScheduled()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Status</option>
+                        <option value="scheduled">Terjadwal</option>
+                        <option value="processing">Processing</option>
+                        <option value="published">Published</option>
+                        <option value="failed">Failed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <div class="flex-1"></div>
+                    <button onclick="loadScheduled()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <i class="fas fa-sync mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scheduled Posts Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akun</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipe</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Konten</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Target</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduledTable" class="divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">Memuat...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-lg m-4">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-bold">Edit Jadwal</h3>
+            </div>
+            <div class="p-6">
+                <input type="hidden" id="editId">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Waktu Jadwal</label>
+                        <input type="datetime-local" id="editTime" class="w-full border rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Konten</label>
+                        <textarea id="editContent" rows="4" class="w-full border rounded-lg px-3 py-2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button onclick="closeEditModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Batal</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scheduledPosts = [];
+        let accounts = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+            loadScheduled();
+            // Auto refresh every 30 seconds
+            setInterval(loadScheduled, 30000);
+        });
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                
+                if (data.success) {
+                    accounts = data.accounts;
+                    const select = document.getElementById('accountFilter');
+                    accounts.forEach(acc => {
+                        select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        }
+
+        async function loadScheduled() {
+            try {
+                const params = new URLSearchParams();
+                const accountId = document.getElementById('accountFilter').value;
+                const status = document.getElementById('statusFilter').value;
+                
+                if (accountId) params.append('account_id', accountId);
+                if (status) params.append('status', status);
+                
+                const res = await fetch(`/api/scheduled-posts?${params}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    scheduledPosts = data.posts;
+                    renderScheduled();
+                    updateStats();
+                }
+            } catch (e) {
+                console.error('Failed to load scheduled:', e);
+            }
+        }
+
+        function renderScheduled() {
+            const tbody = document.getElementById('scheduledTable');
+            
+            if (scheduledPosts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Tidak ada jadwal posting</td></tr>`;
+                return;
+            }
+            
+            tbody.innerHTML = scheduledPosts.map(post => {
+                const statusClass = `status-${post.status}`;
+                const targetIds = JSON.parse(post.target_ids || '[]');
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm">
+                            <div class="font-medium">${new Date(post.schedule_time).toLocaleDateString('id-ID')}</div>
+                            <div class="text-gray-500">${new Date(post.schedule_time).toLocaleTimeString('id-ID')}</div>
+                        </td>
+                        <td class="px-4 py-3 text-sm">${getAccountName(post.facebook_account_id)}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded text-xs bg-gray-100">${post.post_type}</span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <div class="max-w-xs truncate">${post.content || '-'}</div>
+                        </td>
+                        <td class="px-4 py-3 text-sm">${targetIds.length} grup</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                ${post.status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            ${post.status === 'scheduled' ? `
+                                <button onclick="editSchedule(${post.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="cancelSchedule(${post.id})" class="text-red-600 hover:text-red-800" title="Cancel">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : post.status === 'failed' ? `
+                                <button onclick="retrySchedule(${post.id})" class="text-green-600 hover:text-green-800" title="Retry">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const stats = {
+                total: scheduledPosts.length,
+                scheduled: scheduledPosts.filter(p => p.status === 'scheduled').length,
+                processing: scheduledPosts.filter(p => p.status === 'processing').length,
+                published: scheduledPosts.filter(p => p.status === 'published').length,
+                failed: scheduledPosts.filter(p => p.status === 'failed').length
+            };
+            
+            document.getElementById('stat-total').textContent = stats.total;
+            document.getElementById('stat-scheduled').textContent = stats.scheduled;
+            document.getElementById('stat-processing').textContent = stats.processing;
+            document.getElementById('stat-published').textContent = stats.published;
+            document.getElementById('stat-failed').textContent = stats.failed;
+        }
+
+        function getAccountName(accountId) {
+            const account = accounts.find(a => a.id == accountId);
+            return account ? account.name : 'Unknown';
+        }
+
+        function editSchedule(id) {
+            const post = scheduledPosts.find(p => p.id === id);
+            if (!post) return;
+            
+            document.getElementById('editId').value = post.id;
+            document.getElementById('editTime').value = new Date(post.schedule_time).toISOString().slice(0, 16);
+            document.getElementById('editContent').value = post.content || '';
+            
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+        }
+
+        async function saveEdit() {
+            const id = document.getElementById('editId').value;
+            const scheduleTime = document.getElementById('editTime').value;
+            const content = document.getElementById('editContent').value;
+            
+            try {
+                const res = await fetch(`/api/scheduled-posts/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        schedule_time: new Date(scheduleTime).toISOString(),
+                        content: content
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    closeEditModal();
+                    loadScheduled();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function cancelSchedule(id) {
+            if (!confirm('Yakin ingin membatalkan jadwal ini?')) return;
+            
+            try {
+                const res = await fetch(`/api/scheduled-posts/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'cancelled' })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadScheduled();
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function retrySchedule(id) {
+            if (!confirm('Retry posting ini?')) return;
+            
+            try {
+                const res = await fetch(`/api/scheduled-posts/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'scheduled', retry_count: 0 })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadScheduled();
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

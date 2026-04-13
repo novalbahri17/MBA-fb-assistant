@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat Posting - FB Auto Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sidebar { min-height: 100vh; }
+        .status-success { background: #d1fae5; color: #065f46; }
+        .status-failed { background: #fee2e2; color: #991b1b; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-blocked { background: #fce7f3; color: #9d174d; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-gray-900 text-white fixed">
+            <div class="p-6">
+                <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            <nav class="mt-6">
+                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-home w-6"></i> Dashboard
+                </a>
+                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-users w-6"></i> Akun
+                </a>
+                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-user-friends w-6"></i> Grup
+                </a>
+                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-paper-plane w-6"></i> Posting
+                </a>
+                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-clock w-6"></i> Jadwal
+                </a>
+                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-file-alt w-6"></i> Template
+                </a>
+                <a href="history.html" class="block py-3 px-6 bg-blue-600">
+                    <i class="fas fa-history w-6"></i> Riwayat
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Riwayat Posting</h2>
+                    <p class="text-gray-600">Lihat semua aktivitas posting yang telah dilakukan</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="exportHistory()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-download mr-2"></i>Export
+                    </button>
+                    <button onclick="clearOldHistory()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                        <i class="fas fa-trash mr-2"></i>Hapus Lama
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Posting</p>
+                            <p class="text-2xl font-bold" id="statTotal">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg">
+                            <i class="fas fa-paper-plane text-blue-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Berhasil</p>
+                            <p class="text-2xl font-bold text-green-600" id="statSuccess">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-check text-green-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Gagal</p>
+                            <p class="text-2xl font-bold text-red-600" id="statFailed">0</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-lg">
+                            <i class="fas fa-times text-red-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Success Rate</p>
+                            <p class="text-2xl font-bold" id="statRate">0%</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-lg">
+                            <i class="fas fa-percentage text-purple-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="font-bold mb-4">Posting 30 Hari Terakhir</h3>
+                    <canvas id="dailyChart" height="150"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="font-bold mb-4">Distribusi Status</h3>
+                    <canvas id="statusChart" height="150"></canvas>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <select id="accountFilter" onchange="loadHistory()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Akun</option>
+                    </select>
+                    <select id="statusFilter" onchange="loadHistory()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Status</option>
+                        <option value="success">Berhasil</option>
+                        <option value="failed">Gagal</option>
+                        <option value="pending">Pending Approval</option>
+                        <option value="blocked">Blocked</option>
+                    </select>
+                    <input type="date" id="dateFrom" onchange="loadHistory()" class="border rounded-lg px-3 py-2">
+                    <input type="date" id="dateTo" onchange="loadHistory()" class="border rounded-lg px-3 py-2">
+                    <div class="flex-1"></div>
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="Cari..." 
+                               class="border rounded-lg px-3 py-2 pl-10" onkeyup="searchHistory()">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akun</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grup</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Konten</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTable">
+                        <!-- History items will be loaded here -->
+                    </tbody>
+                </table>
+                
+                <!-- Pagination -->
+                <div class="px-4 py-3 border-t flex justify-between items-center">
+                    <span class="text-sm text-gray-600" id="paginationInfo">Showing 0 of 0</span>
+                    <div class="flex gap-2">
+                        <button onclick="prevPage()" id="btnPrev" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button onclick="nextPage()" id="btnNext" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-2xl m-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 class="text-xl font-bold">Detail Posting</h3>
+                <button onclick="closeDetailModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6" id="detailContent">
+                <!-- Detail content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let historyData = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let dailyChart = null;
+        let statusChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+            loadStats();
+            loadDailyStats();
+            loadHistory();
+        });
+
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/api/accounts');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('accountFilter');
+                    data.accounts.forEach(acc => {
+                        select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const accountId = document.getElementById('accountFilter').value;
+                const url = accountId ? `/api/post-history/stats?account_id=${accountId}` : '/api/post-history/stats';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    document.getElementById('statTotal').textContent = stats.total || 0;
+                    document.getElementById('statSuccess').textContent = stats.success || 0;
+                    document.getElementById('statFailed').textContent = stats.failed || 0;
+                    
+                    const rate = stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0;
+                    document.getElementById('statRate').textContent = rate + '%';
+                    
+                    // Update status chart
+                    updateStatusChart(stats);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadDailyStats() {
+            try {
+                const accountId = document.getElementById('accountFilter').value;
+                const url = accountId ? `/api/post-history/daily?account_id=${accountId}` : '/api/post-history/daily';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateDailyChart(data.daily);
+                }
+            } catch (error) {
+                console.error('Error loading daily stats:', error);
+            }
+        }
+
+        function updateDailyChart(daily) {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            
+            if (dailyChart) {
+                dailyChart.destroy();
+            }
+            
+            const labels = daily.map(d => new Date(d.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+            const successData = daily.map(d => d.success);
+            const failedData = daily.map(d => d.failed);
+            
+            dailyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [
+                        {
+                            label: 'Berhasil',
+                            data: successData.reverse(),
+                            backgroundColor: '#10b981'
+                        },
+                        {
+                            label: 'Gagal',
+                            data: failedData.reverse(),
+                            backgroundColor: '#ef4444'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateStatusChart(stats) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            if (statusChart) {
+                statusChart.destroy();
+            }
+            
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Berhasil', 'Gagal', 'Pending', 'Blocked'],
+                    datasets: [{
+                        data: [stats.success || 0, stats.failed || 0, stats.pending || 0, 0],
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#ec4899']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        async function loadHistory() {
+            try {
+                const params = new URLSearchParams();
+                params.append('page', currentPage);
+                params.append('limit', 20);
+                
+                const accountId = document.getElementById('accountFilter').value;
+                const status = document.getElementById('statusFilter').value;
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                
+                if (accountId) params.append('account_id', accountId);
+                if (status) params.append('status', status);
+                if (dateFrom) params.append('date_from', dateFrom);
+                if (dateTo) params.append('date_to', dateTo);
+                
+                const response = await fetch(`/api/post-history?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    historyData = data.data;
+                    currentPage = data.pagination.page;
+                    totalPages = data.pagination.totalPages;
+                    
+                    renderHistory();
+                    updatePagination();
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('historyTable');
+            
+            if (historyData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                            <p>Tidak ada riwayat posting</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = historyData.map(item => {
+                const statusClass = {
+                    'success': 'status-success',
+                    'failed': 'status-failed',
+                    'pending_approval': 'status-pending',
+                    'blocked': 'status-blocked'
+                }[item.status] || 'bg-gray-100';
+                
+                const statusText = {
+                    'success': 'Berhasil',
+                    'failed': 'Gagal',
+                    'pending_approval': 'Pending',
+                    'blocked': 'Blocked'
+                }[item.status] || item.status;
+                
+                const content = item.post_content || item.content || '';
+                const contentPreview = content.length > 50 ? content.substring(0, 50) + '...' : content;
+                
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm">
+                            ${new Date(item.posted_at).toLocaleString('id-ID')}
+                        </td>
+                        <td class="px-4 py-3 text-sm">${item.account_name || '-'}</td>
+                        <td class="px-4 py-3 text-sm">
+                            ${item.group_name ? `<span class="font-medium">${item.group_name}</span>` : '-'}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${contentPreview || '-'}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <button onclick="showDetail(${item.id})" class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updatePagination() {
+            document.getElementById('paginationInfo').textContent = 
+                `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('btnPrev').disabled = currentPage <= 1;
+            document.getElementById('btnNext').disabled = currentPage >= totalPages;
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadHistory();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadHistory();
+            }
+        }
+
+        function searchHistory() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#historyTable tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+
+        function showDetail(id) {
+            const item = historyData.find(h => h.id === id);
+            if (!item) return;
+            
+            const content = document.getElementById('detailContent');
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-500">Waktu Posting</label>
+                            <p class="font-medium">${new Date(item.posted_at).toLocaleString('id-ID')}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Status</label>
+                            <p><span class="px-2 py-1 rounded-full text-xs ${getStatusClass(item.status)}">${item.status}</span></p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Akun</label>
+                            <p class="font-medium">${item.account_name || '-'}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Grup</label>
+                            <p class="font-medium">${item.group_name || '-'}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm text-gray-500">Konten</label>
+                        <div class="bg-gray-50 p-3 rounded mt-1 whitespace-pre-wrap">${item.post_content || item.content || '-'}</div>
+                    </div>
+                    
+                    ${item.error_message ? `
+                        <div>
+                            <label class="text-sm text-gray-500">Error Message</label>
+                            <div class="bg-red-50 text-red-700 p-3 rounded mt-1">${item.error_message}</div>
+                        </div>
+                    ` : ''}
+                    
+                    ${item.image_paths ? `
+                        <div>
+                            <label class="text-sm text-gray-500">Gambar</label>
+                            <div class="mt-1 text-sm text-gray-600">${JSON.parse(item.image_paths).length} gambar</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('detailModal').classList.remove('hidden');
+            document.getElementById('detailModal').classList.add('flex');
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                'success': 'bg-green-100 text-green-800',
+                'failed': 'bg-red-100 text-red-800',
+                'pending_approval': 'bg-yellow-100 text-yellow-800',
+                'blocked': 'bg-pink-100 text-pink-800'
+            };
+            return classes[status] || 'bg-gray-100';
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.getElementById('detailModal').classList.remove('flex');
+        }
+
+        async function exportHistory() {
+            // Export to CSV
+            const params = new URLSearchParams();
+            params.append('limit', 1000);
+            
+            const response = await fetch(`/api/post-history?${params}`);
+            const data = await response.json();
+            
+            if (data.success && data.data.length > 0) {
+                const csv = convertToCSV(data.data);
+                downloadCSV(csv, 'post-history.csv');
+            }
+        }
+
+        function convertToCSV(data) {
+            const headers = ['ID', 'Time', 'Account', 'Group', 'Status', 'Content'];
+            const rows = data.map(item => [
+                item.id,
+                item.posted_at,
+                item.account_name || '',
+                item.group_name || '',
+                item.status,
+                `"${(item.post_content || item.content || '').replace(/"/g, '""')}"`
+            ]);
+            
+            return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        async function clearOldHistory() {
+            if (!confirm('Hapus riwayat posting lebih dari 90 hari?')) return;
+            
+            try {
+                const response = await fetch('/api/post-history/cleanup', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Berhasil menghapus ${data.deleted} riwayat lama`);
+                    loadHistory();
+                    loadStats();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

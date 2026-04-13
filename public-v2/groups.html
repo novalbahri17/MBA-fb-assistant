@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Management - FB Auto Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .group-row:hover { background-color: #f9fafb; }
+        .group-row.selected { background-color: #eff6ff; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-gray-900 text-white fixed">
+            <div class="p-6">
+                <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            <nav class="mt-6">
+                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-home w-6"></i> Dashboard
+                </a>
+                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-users w-6"></i> Akun
+                </a>
+                <a href="groups.html" class="block py-3 px-6 bg-blue-600">
+                    <i class="fas fa-user-friends w-6"></i> Grup
+                </a>
+                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-paper-plane w-6"></i> Posting
+                </a>
+                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-clock w-6"></i> Jadwal
+                </a>
+                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-file-alt w-6"></i> Template
+                </a>
+                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-history w-6"></i> Riwayat
+                </a>
+                <a href="settings.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-cog w-6"></i> Pengaturan
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Manajemen Grup</h2>
+                    <p class="text-gray-600">Kelola grup Facebook untuk posting</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openScanModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-search mr-2"></i>Scan Grup
+                    </button>
+                    <button onclick="openAddModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>Tambah Grup
+                    </button>
+                </div>
+            </div>
+
+            <!-- Current Account Info -->
+            <div id="currentAccountInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fab fa-facebook text-blue-600 text-2xl mr-3"></i>
+                        <div>
+                            <p class="text-sm text-gray-600">Menampilkan grup untuk akun:</p>
+                            <p class="text-lg font-bold text-blue-800" id="currentAccountName">-</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500"><span id="accountGroupCount">0</span> grup ditemukan</p>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Grup</p>
+                            <p class="text-2xl font-bold" id="stat-total">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg">
+                            <i class="fas fa-users text-blue-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Sudah Join</p>
+                            <p class="text-2xl font-bold text-green-600" id="stat-joined">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-check text-green-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Aktif</p>
+                            <p class="text-2xl font-bold text-purple-600" id="stat-active">0</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-lg">
+                            <i class="fas fa-check-circle text-purple-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Member</p>
+                            <p class="text-2xl font-bold text-orange-600" id="stat-members">0</p>
+                        </div>
+                        <div class="bg-orange-100 p-3 rounded-lg">
+                            <i class="fas fa-user-friends text-orange-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters & Bulk Actions -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <div class="flex flex-wrap items-center gap-4">
+                    <select id="accountFilter" onchange="loadGroups()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Akun</option>
+                    </select>
+                    <select id="typeFilter" onchange="loadGroups()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Tipe</option>
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                    <select id="statusFilter" onchange="loadGroups()" class="border rounded-lg px-3 py-2">
+                        <option value="">Semua Status</option>
+                        <option value="joined">Sudah Join</option>
+                        <option value="not_joined">Belum Join</option>
+                    </select>
+                    <div class="flex-1"></div>
+                    
+                    <!-- Bulk Actions -->
+                    <div id="bulkActions" class="hidden flex items-center gap-2">
+                        <span class="text-sm text-gray-600"><span id="selectedCount">0</span> dipilih</span>
+                        <button onclick="bulkDelete()" class="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700">
+                            <i class="fas fa-trash mr-1"></i>Hapus
+                        </button>
+                        <button onclick="bulkSelectAll()" class="bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700">
+                            <i class="fas fa-check-square mr-1"></i>Pilih Semua
+                        </button>
+                        <button onclick="clearSelection()" class="bg-gray-400 text-white px-3 py-2 rounded text-sm hover:bg-gray-500">
+                            <i class="fas fa-times mr-1"></i>Batal
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="openScanModal()" class="bg-purple-600 text-white px-3 py-2 rounded text-sm hover:bg-purple-700" title="Scan grup otomatis dari Facebook">
+                            <i class="fas fa-search mr-1"></i>Scan Grup
+                        </button>
+                        <button onclick="scrapeGroups()" id="btnScrape" class="bg-orange-600 text-white px-3 py-2 rounded text-sm hover:bg-orange-700" title="Auto scraping grup dari Facebook">
+                            <i class="fas fa-sync mr-1"></i>Scrape Grup
+                        </button>
+                        <button onclick="exportGroups()" class="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700">
+                            <i class="fas fa-download mr-1"></i>Export
+                        </button>
+                        <button onclick="document.getElementById('importFile').click()" class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
+                            <i class="fas fa-upload mr-1"></i>Import
+                        </button>
+                        <input type="file" id="importFile" accept=".json" class="hidden" onchange="importGroups(this)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Groups Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="rounded">
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grup</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipe</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groupsTable" class="divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">Memuat...</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <!-- Pagination -->
+                <div class="px-4 py-3 border-t flex justify-between items-center">
+                    <span class="text-sm text-gray-600" id="paginationInfo">Showing 0 of 0</span>
+                    <div class="flex gap-2">
+                        <button onclick="prevPage()" id="btnPrev" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button onclick="nextPage()" id="btnNext" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Group Modal -->
+    <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-md m-4">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-bold">Tambah Grup</h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Pilih Akun *</label>
+                        <select id="addGroupAccount" class="w-full border rounded-lg px-3 py-2">
+                            <option value="">Pilih akun...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Group ID atau URL *</label>
+                        <input type="text" id="addGroupId" class="w-full border rounded-lg px-3 py-2" 
+                               placeholder="1234567890 atau https://facebook.com/groups/...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Nama Grup</label>
+                        <input type="text" id="addGroupName" class="w-full border rounded-lg px-3 py-2" placeholder="Nama grup (opsional)">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tipe</label>
+                        <select id="addGroupType" class="w-full border rounded-lg px-3 py-2">
+                            <option value="public">Public</option>
+                            <option value="private">Private</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Kategori</label>
+                        <input type="text" id="addGroupCategory" class="w-full border rounded-lg px-3 py-2" placeholder="Contoh: Jual Beli, Komunitas">
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button onclick="closeAddModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Batal</button>
+                <button onclick="saveGroup()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Groups Modal -->
+    <div id="scanModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold"><i class="fas fa-search text-purple-600 mr-2"></i>Scan Grup Facebook</h3>
+                    <button onclick="closeScanModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <!-- Scan Options -->
+                <div id="scanOptions" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Pilih Akun *</label>
+                        <select id="scanAccount" class="w-full border rounded-lg px-3 py-2">
+                            <option value="">Pilih akun...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Filter Kata Kunci (Opsional)</label>
+                        <input type="text" id="scanKeywordFilter" class="w-full border rounded-lg px-3 py-2"
+                               placeholder="Contoh: loker, lowongan, lowongan kerja">
+                        <p class="text-xs text-gray-500 mt-1">Pisahkan dengan koma. Kosongkan untuk menampilkan semua grup.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Maks Scroll</label>
+                            <input type="number" id="scanMaxScrolls" value="50" min="10" max="200"
+                                   class="w-full border rounded-lg px-3 py-2">
+                            <p class="text-xs text-gray-500 mt-1">Semakin banyak scroll, semakin banyak grup ditemukan</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Delay Adaptif</label>
+                            <div class="flex items-center mt-2">
+                                <input type="checkbox" id="scanAdaptiveDelay" checked class="mr-2">
+                                <label for="scanAdaptiveDelay" class="text-sm text-gray-600">Aktif (direkomendasikan)</label>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Delay otomatis untuk menghindari deteksi bot</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="scanAutoScrollAll" checked class="mr-2">
+                        <label for="scanAutoScrollAll" class="text-sm">Auto-scroll sampai semua grup ter-load</label>
+                    </div>
+                    <p class="text-xs text-gray-500 ml-6">Scroll otomatis sampai tidak ada grup baru (lebih lama tapi lengkap)</p>
+                </div>
+
+                <!-- Progress Section (hidden until scan starts) -->
+                <div id="scanProgress" class="hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700" id="scanStatusText">Sedang scan...</span>
+                        <span class="text-sm text-gray-500" id="scanPercentage">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div id="scanProgressBar" class="bg-purple-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-purple-50 rounded-lg p-3">
+                            <p class="text-xs text-gray-500">Grup Ditemukan</p>
+                            <p class="text-xl font-bold text-purple-700" id="scanFoundCount">0</p>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-3">
+                            <p class="text-xs text-gray-500">Scroll Dilakukan</p>
+                            <p class="text-xl font-bold text-blue-700" id="scanScrolledCount">0</p>
+                        </div>
+                    </div>
+                    <div id="scanLog" class="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono h-32 overflow-y-auto">
+                        <p>⏳ Menunggu scan dimulai...</p>
+                    </div>
+                </div>
+
+                <!-- Scan Results (hidden until scan completes) -->
+                <div id="scanResults" class="hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-gray-800">Hasil Scan</h4>
+                        <div class="flex gap-2">
+                            <button onclick="selectScanAll()" class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">
+                                <i class="fas fa-check-square mr-1"></i>Pilih Semua
+                            </button>
+                            <button onclick="deselectScanAll()" class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">
+                                <i class="fas fa-square mr-1"></i>Batal Pilih
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Filter Info -->
+                    <div id="scanFilterInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-filter text-blue-600 mr-2"></i>
+                                <span class="text-sm text-gray-700" id="scanFilterText">-</span>
+                            </div>
+                            <button onclick="clearKeywordFilter()" class="text-sm text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times mr-1"></i>Hapus Filter
+                            </button>
+                        </div>
+                    </div>
+                    <div class="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">
+                                        <input type="checkbox" id="scanSelectAll" onchange="toggleScanSelectAll()" class="rounded">
+                                    </th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grup</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Anggota</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Privasi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scanResultsTable" class="divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="text-sm text-gray-600">
+                            <span id="scanSelectedCount">0</span> grup dipilih dari <span id="scanTotalCount">0</span> ditemukan
+                            <span id="scanFilteredCount" class="text-green-600 font-medium ml-2"></span>
+                        </p>
+                        <button onclick="saveScannedGroups()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-save mr-2"></i>Simpan yang Dipilih
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button id="scanCancelBtn" onclick="cancelScan()" class="hidden px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50">
+                    <i class="fas fa-times mr-2"></i>Batal
+                </button>
+                <button id="scanStartBtn" onclick="startScan()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    <i class="fas fa-play mr-2"></i>Mulai Scan
+                </button>
+                <button id="scanCloseBtn" onclick="closeScanModal()" class="hidden px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-times mr-2"></i>Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let accounts = [];
+        let groups = [];
+        let selectedGroups = new Set();
+        let currentPage = 1;
+        let totalPages = 1;
+        
+        // Scan-related variables
+        let currentScanId = null;
+        let scanPollInterval = null;
+        let scannedGroups = [];
+        let filteredScanGroups = [];
+        let selectedScannedGroups = new Set();
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAccounts();
+            loadGroups();
+            
+            // Add event listener for keyword filter
+            const keywordFilter = document.getElementById('scanKeywordFilter');
+            if (keywordFilter) {
+                keywordFilter.addEventListener('input', () => {
+                    if (scannedGroups.length > 0) {
+                        applyKeywordFilter();
+                    }
+                });
+            }
+        });
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                
+                if (data.success) {
+                    accounts = data.accounts; // Simpan ke variable global
+                    console.log('Loaded accounts:', accounts);
+                    
+                    const accountFilter = document.getElementById('accountFilter');
+                    const addGroupAccount = document.getElementById('addGroupAccount');
+                    
+                    // Clear existing options except first
+                    accountFilter.innerHTML = '<option value="">Semua Akun</option>';
+                    addGroupAccount.innerHTML = '<option value="">Pilih akun...</option>';
+                    const scanAccount = document.getElementById('scanAccount');
+                    if (scanAccount) scanAccount.innerHTML = '<option value="">Pilih akun...</option>';
+                    
+                    accounts.forEach(acc => {
+                        accountFilter.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                        addGroupAccount.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                        if (scanAccount) scanAccount.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        }
+
+        async function loadGroups() {
+            const accountId = document.getElementById('accountFilter').value;
+            
+            // Update current account info display
+            const accountInfoDiv = document.getElementById('currentAccountInfo');
+            const accountNameSpan = document.getElementById('currentAccountName');
+            
+            if (accountId && accounts && accounts.length > 0) {
+                const account = accounts.find(a => a.id == accountId);
+                if (account) {
+                    accountNameSpan.textContent = account.name;
+                    accountInfoDiv.classList.remove('hidden');
+                }
+            } else {
+                if (accountInfoDiv) accountInfoDiv.classList.add('hidden');
+            }
+            
+            try {
+                let url = '/api/groups?';
+                if (accountId) url += `account_id=${accountId}&`;
+                
+                const typeFilter = document.getElementById('typeFilter').value;
+                if (typeFilter) url += `group_type=${typeFilter}&`;
+                
+                console.log('Fetching groups with URL:', url);
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.success) {
+                    groups = data.groups;
+                    console.log(`Loaded ${groups.length} groups for account ${accountId || 'all'}`);
+                    renderGroups();
+                    
+                    // Update group count
+                    document.getElementById('accountGroupCount').textContent = groups.length;
+                    
+                    if (accountId) loadStats(accountId);
+                }
+            } catch (e) {
+                console.error('Failed to load groups:', e);
+            }
+        }
+
+        async function loadStats(accountId) {
+            try {
+                const res = await fetch(`/api/groups/${accountId}/stats`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('stat-total').textContent = data.stats.total || 0;
+                    document.getElementById('stat-joined').textContent = data.stats.joined || 0;
+                    document.getElementById('stat-active').textContent = data.stats.active || 0;
+                    document.getElementById('stat-members').textContent = parseInt(data.stats.total_members || 0).toLocaleString();
+                }
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        function renderGroups() {
+            const tbody = document.getElementById('groupsTable');
+            
+            if (groups.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Tidak ada grup</td></tr>`;
+                return;
+            }
+            
+            tbody.innerHTML = groups.map(g => `
+                <tr class="group-row ${selectedGroups.has(g.id) ? 'selected' : ''}">
+                    <td class="px-4 py-3">
+                        <input type="checkbox" value="${g.id}" 
+                               ${selectedGroups.has(g.id) ? 'checked' : ''}
+                               onchange="toggleSelect(${g.id})" class="rounded group-checkbox">
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-gray-900">${g.group_name || 'Unknown'}</div>
+                        <div class="text-sm text-gray-500">ID: ${g.group_id}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full ${g.group_type === 'public' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${g.group_type}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">${parseInt(g.member_count || 0).toLocaleString()}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-sm text-gray-600">${g.category || '-'}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full ${g.is_joined ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
+                            ${g.is_joined ? 'Joined' : 'Not Joined'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <button onclick="deleteGroup(${g.id})" class="text-red-600 hover:text-red-800 mr-2" title="Hapus">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <a href="https://facebook.com/groups/${g.group_id}" target="_blank" class="text-blue-600 hover:text-blue-800" title="Buka">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updateBulkActions();
+        }
+
+        function toggleSelect(id) {
+            if (selectedGroups.has(id)) {
+                selectedGroups.delete(id);
+            } else {
+                selectedGroups.add(id);
+            }
+            renderGroups();
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll').checked;
+            if (selectAll) {
+                groups.forEach(g => selectedGroups.add(g.id));
+            } else {
+                selectedGroups.clear();
+            }
+            renderGroups();
+        }
+
+        function updateBulkActions() {
+            const bulkActions = document.getElementById('bulkActions');
+            const selectedCount = document.getElementById('selectedCount');
+            
+            if (selectedGroups.size > 0) {
+                bulkActions.classList.remove('hidden');
+                selectedCount.textContent = selectedGroups.size;
+            } else {
+                bulkActions.classList.add('hidden');
+            }
+        }
+
+        function clearSelection() {
+            selectedGroups.clear();
+            document.getElementById('selectAll').checked = false;
+            renderGroups();
+        }
+
+        async function bulkDelete() {
+            if (!confirm(`Yakin ingin menghapus ${selectedGroups.size} grup?`)) return;
+            
+            const ids = Array.from(selectedGroups);
+            for (const id of ids) {
+                try {
+                    await fetch(`/api/groups/${id}`, { method: 'DELETE' });
+                } catch (e) {
+                    console.error('Failed to delete group:', id);
+                }
+            }
+            
+            selectedGroups.clear();
+            loadGroups();
+        }
+
+        function openAddModal() {
+            document.getElementById('addModal').classList.remove('hidden');
+            document.getElementById('addModal').classList.add('flex');
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+            document.getElementById('addModal').classList.remove('flex');
+        }
+
+        async function saveGroup() {
+            const accountId = document.getElementById('addGroupAccount').value;
+            const groupId = document.getElementById('addGroupId').value;
+            const name = document.getElementById('addGroupName').value;
+            const type = document.getElementById('addGroupType').value;
+            const category = document.getElementById('addGroupCategory').value;
+            
+            if (!accountId || !groupId) {
+                alert('Akun dan Group ID wajib diisi');
+                return;
+            }
+            
+            // Extract group ID from URL if needed
+            let extractedGroupId = groupId;
+            if (groupId.includes('facebook.com/groups/')) {
+                const match = groupId.match(/groups\/(\d+)/);
+                if (match) extractedGroupId = match[1];
+            }
+            
+            try {
+                const res = await fetch('/api/groups', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        facebook_account_id: accountId,
+                        group_id: extractedGroupId,
+                        group_name: name || extractedGroupId,
+                        group_type: type,
+                        category: category
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    closeAddModal();
+                    loadGroups();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function exportGroups() {
+            const accountId = document.getElementById('accountFilter').value;
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu');
+                return;
+            }
+            window.open(`/api/export/groups/${accountId}`, '_blank');
+        }
+
+        async function importGroups(input) {
+            const accountId = document.getElementById('accountFilter').value;
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu');
+                return;
+            }
+            
+            const file = input.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const groups = JSON.parse(text);
+                
+                const res = await fetch(`/api/import/groups/${accountId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groups })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Berhasil import ${data.imported} grup`);
+                    loadGroups();
+                }
+            } catch (e) {
+                alert('Gagal import: ' + e.message);
+            }
+        }
+
+        async function scrapeGroups() {
+            const accountId = document.getElementById('accountFilter').value;
+            
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu untuk scraping grup');
+                return;
+            }
+            
+            if (!confirm('Scraping akan membuka browser dan mengambil grup dari akun Facebook.\n\nProses ini membutuhkan waktu 1-2 menit.\n\nLanjutkan?')) {
+                return;
+            }
+            
+            const btn = document.getElementById('btnScrape');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Scraping...';
+            
+            try {
+                const res = await fetch(`/api/scrape-groups/${accountId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Scraping dimulai! Tunggu 1-2 menit kemudian refresh halaman.');
+                    // Auto refresh after 30 seconds
+                    setTimeout(() => {
+                        loadGroups();
+                        alert('Grup berhasil di-scrape! Refresh halaman untuk melihat hasil.');
+                    }, 30000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync mr-1"></i>Scrape Grup';
+            }
+        }
+
+        async function deleteGroup(id) {
+            if (!confirm('Yakin ingin menghapus grup ini?')) return;
+            
+            try {
+                const res = await fetch(`/api/groups/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    loadGroups();
+                }
+            } catch (e) {
+                alert('Gagal menghapus: ' + e.message);
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadGroups();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadGroups();
+            }
+        }
+
+        // ==================== SCAN FUNCTIONS ====================
+
+        function openScanModal() {
+            document.getElementById('scanModal').classList.remove('hidden');
+            document.getElementById('scanModal').classList.add('flex');
+            resetScanUI();
+        }
+
+        function closeScanModal() {
+            document.getElementById('scanModal').classList.add('hidden');
+            document.getElementById('scanModal').classList.remove('flex');
+            if (scanPollInterval) {
+                clearInterval(scanPollInterval);
+                scanPollInterval = null;
+            }
+        }
+
+        function resetScanUI() {
+            // Reset to initial state
+            document.getElementById('scanOptions').classList.remove('hidden');
+            document.getElementById('scanProgress').classList.add('hidden');
+            document.getElementById('scanResults').classList.add('hidden');
+            document.getElementById('scanStartBtn').classList.remove('hidden');
+            document.getElementById('scanCancelBtn').classList.add('hidden');
+            document.getElementById('scanCloseBtn').classList.add('hidden');
+            document.getElementById('scanProgressBar').style.width = '0%';
+            document.getElementById('scanPercentage').textContent = '0%';
+            document.getElementById('scanFoundCount').textContent = '0';
+            document.getElementById('scanScrolledCount').textContent = '0';
+            document.getElementById('scanStatusText').textContent = 'Sedang scan...';
+            document.getElementById('scanLog').innerHTML = '<p>⏳ Menunggu scan dimulai...</p>';
+            document.getElementById('scanResultsTable').innerHTML = '';
+            document.getElementById('scanFilterInfo').classList.add('hidden');
+            document.getElementById('scanFilteredCount').textContent = '';
+            document.getElementById('scanKeywordFilter').value = '';
+            scannedGroups = [];
+            filteredScanGroups = [];
+            selectedScannedGroups.clear();
+            currentScanId = null;
+        }
+
+        async function startScan() {
+            const accountId = document.getElementById('scanAccount').value;
+            
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu!');
+                return;
+            }
+
+            const maxScrolls = parseInt(document.getElementById('scanMaxScrolls').value) || 50;
+            const adaptiveDelay = document.getElementById('scanAdaptiveDelay').checked;
+            const autoScrollAll = document.getElementById('scanAutoScrollAll').checked;
+
+            // Update UI to scanning state
+            document.getElementById('scanOptions').classList.add('hidden');
+            document.getElementById('scanProgress').classList.remove('hidden');
+            document.getElementById('scanStartBtn').classList.add('hidden');
+            document.getElementById('scanCancelBtn').classList.remove('hidden');
+            document.getElementById('scanCloseBtn').classList.add('hidden');
+            document.getElementById('scanStatusText').textContent = 'Memulai scan...';
+            document.getElementById('scanLog').innerHTML = '<p>🚀 Memulai scan...</p>';
+
+            try {
+                const res = await fetch('/api/groups/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        accountId,
+                        options: {
+                            maxScrolls,
+                            adaptiveDelay,
+                            autoScrollAll
+                        }
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    currentScanId = data.scanId;
+                    console.log('✅ Scan started with ID:', currentScanId);
+                    addScanLog('✅ Scan dimulai dengan ID: ' + currentScanId);
+                    
+                    // Start polling for status
+                    scanPollInterval = setInterval(() => pollScanStatus(currentScanId), 2000);
+                } else {
+                    alert('Gagal memulai scan: ' + data.error);
+                    resetScanUI();
+                }
+            } catch (e) {
+                console.error('❌ Error starting scan:', e);
+                alert('Gagal memulai scan: ' + e.message);
+                resetScanUI();
+            }
+        }
+
+        async function pollScanStatus(scanId) {
+            try {
+                const res = await fetch(`/api/groups/scan/${scanId}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    console.error('❌ Failed to get scan status');
+                    return;
+                }
+
+                const status = data.status;
+                const stats = data.stats || {};
+                const scanGroups = data.groups || [];
+
+                // Update progress
+                const scrolled = stats.scrolled || 0;
+                const maxScrolls = parseInt(document.getElementById('scanMaxScrolls').value) || 50;
+                const progress = Math.min(Math.round((scrolled / maxScrolls) * 100), 100);
+                
+                document.getElementById('scanProgressBar').style.width = progress + '%';
+                document.getElementById('scanPercentage').textContent = progress + '%';
+                document.getElementById('scanScrolledCount').textContent = scrolled;
+                document.getElementById('scanFoundCount').textContent = scanGroups.length;
+
+                if (status === 'running') {
+                    document.getElementById('scanStatusText').textContent = 'Sedang scan...';
+                    addScanLog(`📊 Scrolling... ditemukan ${scanGroups.length} grup`);
+                } else if (status === 'completed') {
+                    document.getElementById('scanStatusText').textContent = 'Selesai!';
+                    addScanLog('✅ Scan selesai!');
+                    
+                    // Stop polling
+                    if (scanPollInterval) {
+                        clearInterval(scanPollInterval);
+                        scanPollInterval = null;
+                    }
+
+                    // Show results
+                    scannedGroups = scanGroups;
+                    showScanResults(scanGroups);
+                } else if (status === 'failed') {
+                    document.getElementById('scanStatusText').textContent = 'Gagal';
+                    addScanLog('❌ Scan gagal: ' + (data.error || 'Unknown error'));
+                    
+                    if (scanPollInterval) {
+                        clearInterval(scanPollInterval);
+                        scanPollInterval = null;
+                    }
+
+                    document.getElementById('scanCancelBtn').classList.add('hidden');
+                    document.getElementById('scanCloseBtn').classList.remove('hidden');
+                } else if (status === 'cancelled') {
+                    document.getElementById('scanStatusText').textContent = 'Dibatalkan';
+                    addScanLog('⚠️ Scan dibatalkan');
+                    
+                    if (scanPollInterval) {
+                        clearInterval(scanPollInterval);
+                        scanPollInterval = null;
+                    }
+
+                    document.getElementById('scanCancelBtn').classList.add('hidden');
+                    document.getElementById('scanCloseBtn').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error('❌ Error polling scan status:', e);
+            }
+        }
+
+        async function cancelScan() {
+            if (!currentScanId) return;
+
+            if (!confirm('Yakin ingin membatalkan scan?')) return;
+
+            try {
+                const res = await fetch(`/api/groups/scan/${currentScanId}/cancel`, {
+                    method: 'POST'
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    addScanLog('⚠️ Scan dibatalkan...');
+                    document.getElementById('scanCancelBtn').classList.add('hidden');
+                    document.getElementById('scanCloseBtn').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error('❌ Error cancelling scan:', e);
+            }
+        }
+
+        function filterGroupsByKeyword(groups, keywords) {
+            if (!keywords || keywords.trim() === '') return groups;
+            
+            const keywordList = keywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k);
+            
+            return groups.filter(group => {
+                const groupName = (group.name || group.group_name || '').toLowerCase();
+                return keywordList.some(keyword => groupName.includes(keyword));
+            });
+        }
+
+        function applyKeywordFilter() {
+            const keywords = document.getElementById('scanKeywordFilter').value;
+            filteredScanGroups = filterGroupsByKeyword(scannedGroups, keywords);
+            
+            // Update filter info display
+            const filterInfoDiv = document.getElementById('scanFilterInfo');
+            const filterText = document.getElementById('scanFilterText');
+            const filteredCount = document.getElementById('scanFilteredCount');
+            
+            if (keywords && keywords.trim() !== '') {
+                filterInfoDiv.classList.remove('hidden');
+                filterText.textContent = `${filteredScanGroups.length} dari ${scannedGroups.length} grup sesuai filter`;
+                filteredCount.textContent = `(${filteredScanGroups.length} sesuai filter)`;
+            } else {
+                filterInfoDiv.classList.add('hidden');
+                filteredCount.textContent = '';
+            }
+            
+            renderScanResults(filteredScanGroups);
+        }
+
+        function clearKeywordFilter() {
+            document.getElementById('scanKeywordFilter').value = '';
+            applyKeywordFilter();
+        }
+
+        function renderScanResults(displayGroups) {
+            const tbody = document.getElementById('scanResultsTable');
+            
+            if (displayGroups.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-gray-500">Tidak ada grup ditemukan</td></tr>';
+                document.getElementById('scanTotalCount').textContent = '0';
+                document.getElementById('scanSelectedCount').textContent = '0';
+                return;
+            }
+
+            // FIX: Use group_id as the key instead of array index to avoid reference issues
+            // Build a map of group_id -> group data for reliable lookup
+            const groupIdToIndex = new Map();
+            scannedGroups.forEach((g, idx) => {
+                const id = g.group_id || g.id;
+                if (id) groupIdToIndex.set(id, idx);
+            });
+
+            // Map display groups back to original indices using group_id
+            tbody.innerHTML = displayGroups.map((g) => {
+                const groupId = g.group_id || g.id;
+                const originalIdx = groupIdToIndex.get(groupId);
+                
+                if (originalIdx === undefined) {
+                    console.warn('⚠️ [renderScanResults] Could not find index for group:', groupId, g);
+                }
+                
+                return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-2">
+                        <input type="checkbox" value="${originalIdx !== undefined ? originalIdx : ''}"
+                               onchange="toggleScanGroupSelect(${originalIdx !== undefined ? originalIdx : -1})"
+                               class="scan-group-checkbox rounded"
+                               data-group-id="${groupId}">
+                    </td>
+                    <td class="px-3 py-2">
+                        <a href="https://facebook.com/groups/${groupId}" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium">
+                            ${g.group_name || g.name || 'Unknown'}
+                        </a>
+                    </td>
+                    <td class="px-3 py-2 text-sm text-gray-500">${groupId || '-'}</td>
+                    <td class="px-3 py-2 text-sm">${formatMemberCount(g.member_count || g.memberCount || 0)}</td>
+                    <td class="px-3 py-2">
+                        <span class="px-2 py-1 text-xs rounded-full ${(g.group_type || g.privacy) === 'public' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${g.group_type || g.privacy || 'unknown'}
+                        </span>
+                    </td>
+                </tr>
+            `}).join('');
+
+            document.getElementById('scanTotalCount').textContent = displayGroups.length;
+            document.getElementById('scanSelectedCount').textContent = '0';
+            selectedScannedGroups.clear();
+            
+            console.log(`✅ [renderScanResults] Rendered ${displayGroups.length} groups, groupIdToIndex size: ${groupIdToIndex.size}`);
+        }
+
+        function showScanResults(scanGroups) {
+            document.getElementById('scanProgress').classList.add('hidden');
+            document.getElementById('scanResults').classList.remove('hidden');
+            document.getElementById('scanCancelBtn').classList.add('hidden');
+            document.getElementById('scanCloseBtn').classList.remove('hidden');
+
+            scannedGroups = scanGroups;
+            
+            console.log(`✅ [showScanResults] ${scanGroups.length} groups loaded`);
+            if (scanGroups.length > 0) {
+                console.log('  - First group keys:', Object.keys(scanGroups[0]));
+                console.log('  - First group:', JSON.stringify(scanGroups[0], null, 2));
+            }
+            
+            applyKeywordFilter();
+            
+            // Auto-select all groups after rendering
+            setTimeout(() => {
+                selectScanAll();
+            }, 100);
+        }
+
+        function toggleScanGroupSelect(idx) {
+            if (selectedScannedGroups.has(idx)) {
+                selectedScannedGroups.delete(idx);
+            } else {
+                selectedScannedGroups.add(idx);
+            }
+            document.getElementById('scanSelectedCount').textContent = selectedScannedGroups.size;
+        }
+
+        function toggleScanSelectAll() {
+            const selectAll = document.getElementById('scanSelectAll').checked;
+            const checkboxes = document.querySelectorAll('.scan-group-checkbox');
+            
+            checkboxes.forEach((cb) => {
+                cb.checked = selectAll;
+                const idx = parseInt(cb.value);
+                if (selectAll) {
+                    selectedScannedGroups.add(idx);
+                } else {
+                    selectedScannedGroups.delete(idx);
+                }
+            });
+            
+            document.getElementById('scanSelectedCount').textContent = selectedScannedGroups.size;
+        }
+
+        function selectScanAll() {
+            selectedScannedGroups.clear();
+            
+            // FIX: Use group_id map instead of indexOf
+            const groupIdToIndex = new Map();
+            scannedGroups.forEach((g, idx) => {
+                const id = g.group_id || g.id;
+                if (id) groupIdToIndex.set(id, idx);
+            });
+            
+            filteredScanGroups.forEach((g) => {
+                const groupId = g.group_id || g.id;
+                const idx = groupIdToIndex.get(groupId);
+                if (idx !== undefined && idx >= 0) selectedScannedGroups.add(idx);
+            });
+            
+            document.querySelectorAll('.scan-group-checkbox').forEach(cb => {
+                cb.checked = true;
+                const val = parseInt(cb.value);
+                if (!isNaN(val) && val >= 0) selectedScannedGroups.add(val);
+            });
+            document.getElementById('scanSelectAll').checked = true;
+            document.getElementById('scanSelectedCount').textContent = selectedScannedGroups.size;
+            
+            console.log(`✅ [selectScanAll] Selected ${selectedScannedGroups.size} groups`);
+        }
+
+        function deselectScanAll() {
+            selectedScannedGroups.clear();
+            document.querySelectorAll('.scan-group-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('scanSelectAll').checked = false;
+            document.getElementById('scanSelectedCount').textContent = '0';
+        }
+
+        async function saveScannedGroups() {
+            const accountId = document.getElementById('scanAccount').value;
+            
+            console.log('🔍 [DEBUG] saveScannedGroups called');
+            console.log('  - accountId:', accountId);
+            console.log('  - selectedScannedGroups.size:', selectedScannedGroups.size);
+            console.log('  - scannedGroups.length:', scannedGroups.length);
+            console.log('  - selected indices:', Array.from(selectedScannedGroups));
+            
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu!');
+                return;
+            }
+
+            if (selectedScannedGroups.size === 0) {
+                alert('Pilih minimal 1 grup untuk disimpan!');
+                return;
+            }
+
+            const groupsToSave = Array.from(selectedScannedGroups).map(idx => scannedGroups[idx]);
+            
+            console.log('🔍 [DEBUG] groupsToSave:');
+            console.log('  - count:', groupsToSave.length);
+            console.log('  - first group:', JSON.stringify(groupsToSave[0], null, 2));
+            console.log('  - first group keys:', groupsToSave[0] ? Object.keys(groupsToSave[0]) : 'N/A');
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+
+            try {
+                const requestBody = {
+                    accountId,
+                    groups: groupsToSave
+                };
+                console.log('🔍 [DEBUG] Sending POST to /api/groups/save');
+                console.log('  - requestBody.groups.length:', requestBody.groups.length);
+                
+                const res = await fetch('/api/groups/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('🔍 [DEBUG] Response status:', res.status);
+                const data = await res.json();
+                console.log('🔍 [DEBUG] Response body:', JSON.stringify(data, null, 2));
+                
+                if (data.success) {
+                    alert(`✅ Berhasil menyimpan ${data.saved} grup! (${data.duplicates} duplikat dilewati, ${data.errors || 0} error)`);
+                    closeScanModal();
+                    loadGroups();
+                } else {
+                    alert('Gagal menyimpan: ' + data.error);
+                }
+            } catch (e) {
+                console.error('❌ [DEBUG] saveScannedGroups error:', e);
+                alert('Gagal menyimpan: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function addScanLog(message) {
+            const logDiv = document.getElementById('scanLog');
+            const time = new Date().toLocaleTimeString('id-ID');
+            logDiv.innerHTML += `<p>[${time}] ${message}</p>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function formatMemberCount(count) {
+            const num = parseInt(count);
+            if (isNaN(num)) return '-';
+            return num.toLocaleString('id-ID');
+        }
+    </script>
+</body>
+</html>

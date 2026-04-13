@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Akun - FB Auto Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .account-card { transition: all 0.3s ease; }
+        .account-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .status-active { background: #d1fae5; color: #065f46; }
+        .status-inactive { background: #f3f4f6; color: #6b7280; }
+        .status-blocked { background: #fee2e2; color: #991b1b; }
+        .log-entry { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-gray-900 text-white fixed">
+            <div class="p-6">
+                <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            <nav class="mt-6">
+                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-home w-6"></i> Dashboard
+                </a>
+                <a href="accounts.html" class="block py-3 px-6 bg-blue-600">
+                    <i class="fas fa-users w-6"></i> Akun
+                </a>
+                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-user-friends w-6"></i> Grup
+                </a>
+                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-paper-plane w-6"></i> Posting
+                </a>
+                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-clock w-6"></i> Jadwal
+                </a>
+                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-file-alt w-6"></i> Template
+                </a>
+                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-history w-6"></i> Riwayat
+                </a>
+                <a href="settings.html" class="block py-3 px-6 hover:bg-gray-800 transition">
+                    <i class="fas fa-cog w-6"></i> Pengaturan
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Kelola Akun Facebook</h2>
+                    <p class="text-gray-600">Tambah akun Facebook untuk posting</p>
+                </div>
+                <button onclick="openLoginModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-plus mr-2"></i>Tambah Akun
+                </button>
+            </div>
+
+            <!-- Login Progress (Hidden by default) -->
+            <div id="loginProgress" class="hidden bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Proses Login</h3>
+                <div class="bg-gray-900 rounded-lg p-4 max-h-48 overflow-y-auto font-mono text-sm">
+                    <div id="loginLog" class="space-y-1">
+                        <p class="text-gray-400">Menunggu proses login...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Akun</p>
+                            <p class="text-2xl font-bold" id="stat-total">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg">
+                            <i class="fas fa-users text-blue-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Aktif</p>
+                            <p class="text-2xl font-bold text-green-600" id="stat-active">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-check-circle text-green-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Non-Aktif</p>
+                            <p class="text-2xl font-bold text-gray-600" id="stat-inactive">0</p>
+                        </div>
+                        <div class="bg-gray-100 p-3 rounded-lg">
+                            <i class="fas fa-pause-circle text-gray-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Diblokir</p>
+                            <p class="text-2xl font-bold text-red-600" id="stat-blocked">0</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-lg">
+                            <i class="fas fa-ban text-red-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accounts Grid -->
+            <div id="accountsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Accounts will be loaded here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fab fa-facebook text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600">Belum ada akun</h3>
+                <p class="text-gray-500 mt-2">Tambah akun Facebook untuk memulai</p>
+                <button onclick="openLoginModal()" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    Tambah Akun Pertama
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-lg m-4">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-bold">Tambah Akun Facebook</h3>
+                <p class="text-sm text-gray-500 mt-1">Pilih metode penambahan akun</p>
+            </div>
+            
+            <!-- Tab Navigation -->
+            <div class="flex border-b">
+                <button id="tabBtnLogin" onclick="switchAddAccountTab('login')" class="flex-1 py-3 px-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login Facebook
+                </button>
+                <button id="tabBtnCookies" onclick="switchAddAccountTab('cookies')" class="flex-1 py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-cookie-bite mr-2"></i>Import Cookies
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <!-- Tab: Login Facebook -->
+                <div id="tabLogin" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Nama Akun (Opsional)</label>
+                        <input type="text" id="loginAccountName" class="w-full border rounded-lg px-3 py-2" placeholder="Contoh: Akun Pribadi">
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-900 mb-2"><i class="fas fa-info-circle mr-2"></i>Cara Kerja:</h4>
+                        <ol class="text-sm text-blue-800 list-decimal list-inside space-y-1">
+                            <li>Pilih mode (Cepat/Lengkap)</li>
+                            <li>Klik "Buka Browser & Login"</li>
+                            <li>Login di browser yang terbuka</li>
+                            <li>Tunggu sistem mengambil data</li>
+                            <li>Selesai!</li>
+                        </ol>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p class="text-sm text-yellow-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            <strong>Kenapa harus scrolling?</strong> Facebook tidak menampilkan semua grup sekaligus (lazy loading), jadi untuk dapat 400+ grup memang harus scrolling.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Tab: Import Cookies -->
+                <div id="tabCookies" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Nama Akun (Opsional)</label>
+                        <input type="text" id="cookieAccountName" class="w-full border rounded-lg px-3 py-2" placeholder="Contoh: Akun Kedua">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Cookies JSON</label>
+                        <textarea id="cookieJsonInput" rows="8" class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder='[
+  {
+    "name": "c_user",
+    "value": "1000xxxxxxxxx",
+    "domain": ".facebook.com",
+    "path": "/"
+  },
+  {
+    "name": "xs",
+    "value": "xx:xxxxxxxx:xxx",
+    "domain": ".facebook.com",
+    "path": "/"
+  }
+]'></textarea>
+                    </div>
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 class="font-medium text-green-900 mb-2"><i class="fas fa-info-circle mr-2"></i>Cara Export Cookies:</h4>
+                        <ol class="text-sm text-green-800 list-decimal list-inside space-y-1">
+                            <li>Install extension <strong>EditThisCookie</strong> atau <strong>Get cookies.txt</strong></li>
+                            <li>Login ke Facebook di browser</li>
+                            <li>Klik extension → Export → Copy</li>
+                            <li>Paste di textarea di atas</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button onclick="closeLoginModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Batal</button>
+                <button onclick="startLogin()" id="btnStartLogin" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-external-link-alt mr-2"></i>Buka Browser & Login
+                </button>
+                <button onclick="importCookies()" id="btnImportCookies" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 hidden">
+                    <i class="fas fa-download mr-2"></i>Import Cookies
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Cookies Modal -->
+    <div id="updateCookiesModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-lg m-4">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-bold">Update Cookies</h3>
+                <p class="text-sm text-gray-500 mt-1">Akun: <span id="updateCookiesAccountName"></span></p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Cookies JSON Baru</label>
+                    <textarea id="updateCookiesJsonInput" rows="8" class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder='[
+  {
+    "name": "c_user",
+    "value": "1000xxxxxxxxx",
+    "domain": ".facebook.com",
+    "path": "/"
+  },
+  {
+    "name": "xs",
+    "value": "xx:xxxxxxxx:xxx",
+    "domain": ".facebook.com",
+    "path": "/"
+  }
+]'></textarea>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 class="font-medium text-yellow-900 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Perhatian:</h4>
+                    <p class="text-sm text-yellow-800">
+                        Cookies lama akan diganti dengan cookies baru. Pastikan cookies yang di-paste masih valid dan belum expired.
+                    </p>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button onclick="closeUpdateCookiesModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Batal</button>
+                <button onclick="updateCookies()" id="btnUpdateCookies" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
+                    <i class="fas fa-save mr-2"></i>Update Cookies
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let updateCookiesAccountId = null;
+        let accounts = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+        });
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                
+                if (data.success) {
+                    accounts = data.accounts;
+                    renderAccounts();
+                    updateStats();
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        }
+
+        function renderAccounts() {
+            const grid = document.getElementById('accountsGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (accounts.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            grid.innerHTML = accounts.map(acc => {
+                const statusClass = `status-${acc.status}`;
+                
+                return `
+                    <div class="account-card bg-white rounded-lg shadow p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                    ${acc.profile_picture ? 
+                                        `<img src="${acc.profile_picture}" class="w-12 h-12 rounded-full">` :
+                                        `<i class="fab fa-facebook text-blue-600 text-xl"></i>`
+                                    }
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-800">${acc.name}</h3>
+                                    <p class="text-sm text-gray-500">${acc.email || '-'}</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                ${acc.status}
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                            <div class="bg-gray-50 rounded p-2">
+                                <p class="text-lg font-bold text-blue-600">${acc.total_groups || 0}</p>
+                                <p class="text-xs text-gray-500">Grup</p>
+                            </div>
+                            <div class="bg-gray-50 rounded p-2">
+                                <p class="text-lg font-bold text-purple-600">${acc.scheduled_posts || 0}</p>
+                                <p class="text-xs text-gray-500">Jadwal</p>
+                            </div>
+                            <div class="bg-gray-50 rounded p-2">
+                                <p class="text-lg font-bold text-green-600">${acc.total_posts || 0}</p>
+                                <p class="text-xs text-gray-500">Posted</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <a href="groups.html?account=${acc.id}" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded text-center text-sm hover:bg-blue-100">
+                                <i class="fas fa-user-friends mr-1"></i>Grup
+                            </a>
+                            <button onclick="syncGroups(${acc.id})" class="bg-green-50 text-green-600 px-3 py-2 rounded hover:bg-green-100" title="Sync Grup">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                            <button onclick="openUpdateCookiesModal(${acc.id}, '${acc.name}')" class="bg-yellow-50 text-yellow-600 px-3 py-2 rounded hover:bg-yellow-100" title="Update Cookies">
+                                <i class="fas fa-cookie-bite"></i>
+                            </button>
+                            <button onclick="deleteAccount(${acc.id})" class="bg-red-50 text-red-600 px-3 py-2 rounded hover:bg-red-100" title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').textContent = accounts.length;
+            document.getElementById('stat-active').textContent = accounts.filter(a => a.status === 'active').length;
+            document.getElementById('stat-inactive').textContent = accounts.filter(a => a.status === 'inactive').length;
+            document.getElementById('stat-blocked').textContent = accounts.filter(a => a.status === 'blocked').length;
+        }
+
+        let currentTab = 'login';
+
+        function switchAddAccountTab(tab) {
+            currentTab = tab;
+            
+            const tabBtnLogin = document.getElementById('tabBtnLogin');
+            const tabBtnCookies = document.getElementById('tabBtnCookies');
+            const tabLogin = document.getElementById('tabLogin');
+            const tabCookies = document.getElementById('tabCookies');
+            const btnLogin = document.getElementById('btnStartLogin');
+            const btnCookies = document.getElementById('btnImportCookies');
+            
+            if (tab === 'login') {
+                tabBtnLogin.className = 'flex-1 py-3 px-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600';
+                tabBtnCookies.className = 'flex-1 py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                tabLogin.classList.remove('hidden');
+                tabCookies.classList.add('hidden');
+                btnLogin.classList.remove('hidden');
+                btnCookies.classList.add('hidden');
+            } else {
+                tabBtnLogin.className = 'flex-1 py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+                tabBtnCookies.className = 'flex-1 py-3 px-4 text-sm font-medium border-b-2 border-green-600 text-green-600';
+                tabLogin.classList.add('hidden');
+                tabCookies.classList.remove('hidden');
+                btnLogin.classList.add('hidden');
+                btnCookies.classList.remove('hidden');
+            }
+        }
+
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('flex');
+            switchAddAccountTab('login');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('flex');
+        }
+
+        async function importCookies() {
+            const accountName = document.getElementById('cookieAccountName').value;
+            const cookieJsonStr = document.getElementById('cookieJsonInput').value.trim();
+            
+            if (!cookieJsonStr) {
+                alert('Silakan paste cookies JSON terlebih dahulu');
+                return;
+            }
+            
+            // Show progress
+            closeLoginModal();
+            document.getElementById('loginProgress').classList.remove('hidden');
+            document.getElementById('loginLog').innerHTML = '';
+            addLog('🍪 Memulai import cookies...', 'info');
+            
+            const btn = document.getElementById('btnImportCookies');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importing...';
+            
+            try {
+                // Parse and validate JSON first
+                let cookies;
+                try {
+                    cookies = JSON.parse(cookieJsonStr);
+                    addLog('✅ JSON valid, checking format...', 'success');
+                } catch (e) {
+                    addLog('❌ Error: Format JSON tidak valid - ' + e.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+                    return;
+                }
+                
+                // Validate it's an array
+                if (!Array.isArray(cookies)) {
+                    addLog('❌ Error: Cookies harus berupa array', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+                    return;
+                }
+                
+                // Check for required cookies
+                const hasCUser = cookies.some(c => c.name === 'c_user');
+                const hasXs = cookies.some(c => c.name === 'xs');
+                if (!hasCUser || !hasXs) {
+                    addLog('❌ Error: Cookies tidak lengkap, diperlukan c_user dan xs', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+                    return;
+                }
+                
+                addLog('✅ Required cookies found (c_user, xs)', 'success');
+                addLog('📤 Mengirim ke server...', 'info');
+                
+                const res = await fetch('/api/accounts/import-cookies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        account_name: accountName,
+                        cookies: cookies
+                    })
+                });
+                
+                // Check if response is JSON
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await res.text();
+                    addLog('❌ Server returned non-JSON response (HTML)', 'error');
+                    addLog('📋 Response preview: ' + text.substring(0, 200), 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+                    return;
+                }
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    addLog('✅ Cookies valid!', 'success');
+                    addLog(`📥 Akun: ${data.account.name}`, 'success');
+                    addLog('✅ Proses selesai!', 'success');
+                    
+                    // Reload accounts
+                    await loadAccounts();
+                    
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+                } else {
+                    addLog('❌ Error: ' + data.error, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+                }
+            } catch (e) {
+                addLog('❌ Error: ' + e.message, 'error');
+                console.error('importCookies error:', e);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download mr-2"></i>Import Cookies';
+            }
+        }
+
+        function addLog(message, type = 'info') {
+            const logConsole = document.getElementById('loginLog');
+            const colors = {
+                info: 'text-gray-300',
+                success: 'text-green-400',
+                warning: 'text-yellow-400',
+                error: 'text-red-400'
+            };
+            
+            const time = new Date().toLocaleTimeString();
+            logConsole.innerHTML += `<p class="log-entry ${colors[type]}">[${time}] ${message}</p>`;
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        async function startLogin() {
+            const name = document.getElementById('loginAccountName').value;
+            const mode = 'quick'; // Default mode
+            
+            // Show progress
+            closeLoginModal();
+            document.getElementById('loginProgress').classList.remove('hidden');
+            document.getElementById('loginLog').innerHTML = '';
+            addLog('Membuka browser untuk login manual...', 'info');
+            
+            const btn = document.getElementById('btnStartLogin');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Membuka...';
+            
+            try {
+                const res = await fetch('/api/login-facebook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        account_name: name,
+                        mode: mode
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    addLog('Browser terbuka! Silakan:', 'success');
+                    addLog('1. Login dengan email & password Facebook', 'info');
+                    addLog('2. Tunggu sistem mengambil data', 'info');
+                    if (mode === 'full') {
+                        addLog('3. Mode lengkap: akan scrolling otomatis', 'warning');
+                    }
+                    
+                    // Poll for new accounts
+                    let attempts = 0;
+                    const pollInterval = setInterval(async () => {
+                        await loadAccounts();
+                        attempts++;
+                        
+                        if (attempts > 60) {
+                            clearInterval(pollInterval);
+                            addLog('Proses selesai!', 'success');
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-external-link-alt mr-2"></i>Buka Browser & Login';
+                        }
+                    }, 5000);
+                } else {
+                    addLog('Error: ' + data.error, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-external-link-alt mr-2"></i>Buka Browser & Login';
+                }
+            } catch (e) {
+                addLog('Error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-external-link-alt mr-2"></i>Buka Browser & Login';
+            }
+        }
+
+        async function syncGroups(accountId) {
+            if (!confirm('Sync grup yang sudah di-join untuk akun ini?')) return;
+            
+            try {
+                const res = await fetch(`/api/scrape-groups/${accountId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert('Sync grup dimulai! Tunggu 1-2 menit.');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function deleteAccount(id) {
+            if (!confirm('Yakin ingin menghapus akun ini? Semua data grup dan jadwal juga akan terhapus.')) return;
+            
+            try {
+                const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    loadAccounts();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function openUpdateCookiesModal(accountId, accountName) {
+            updateCookiesAccountId = accountId;
+            document.getElementById('updateCookiesAccountName').textContent = accountName;
+            document.getElementById('updateCookiesJsonInput').value = '';
+            document.getElementById('updateCookiesModal').classList.remove('hidden');
+            document.getElementById('updateCookiesModal').classList.add('flex');
+        }
+
+        function closeUpdateCookiesModal() {
+            document.getElementById('updateCookiesModal').classList.add('hidden');
+            document.getElementById('updateCookiesModal').classList.remove('flex');
+            updateCookiesAccountId = null;
+        }
+
+        async function updateCookies() {
+            const cookieJsonStr = document.getElementById('updateCookiesJsonInput').value.trim();
+            
+            if (!cookieJsonStr) {
+                alert('Silakan paste cookies JSON terlebih dahulu');
+                return;
+            }
+            
+            if (!updateCookiesAccountId) {
+                alert('ID akun tidak valid');
+                return;
+            }
+            
+            const btn = document.getElementById('btnUpdateCookies');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+            
+            try {
+                // Parse JSON
+                let cookies;
+                try {
+                    cookies = JSON.parse(cookieJsonStr);
+                } catch (e) {
+                    alert('Format JSON tidak valid: ' + e.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save mr-2"></i>Update Cookies';
+                    return;
+                }
+                
+                // Validate array
+                if (!Array.isArray(cookies)) {
+                    alert('Cookies harus berupa array');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save mr-2"></i>Update Cookies';
+                    return;
+                }
+                
+                // Check required cookies
+                const hasCUser = cookies.some(c => c.name === 'c_user');
+                const hasXs = cookies.some(c => c.name === 'xs');
+                if (!hasCUser || !hasXs) {
+                    alert('Cookies tidak lengkap! Diperlukan c_user dan xs');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save mr-2"></i>Update Cookies';
+                    return;
+                }
+                
+                // Send to server
+                const res = await fetch(`/api/accounts/${updateCookiesAccountId}/update-cookies`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookies: cookies })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Cookies berhasil diupdate!');
+                    closeUpdateCookiesModal();
+                    loadAccounts();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save mr-2"></i>Update Cookies';
+        }
+    </script>
+</body>
+</html>

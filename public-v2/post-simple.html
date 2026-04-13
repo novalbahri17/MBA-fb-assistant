@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Sekarang - Simple</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .drop-zone { border: 2px dashed #cbd5e0; transition: all 0.3s; }
+        .drop-zone.dragover { border-color: #4299e1; background: #ebf8ff; }
+        .preview-img { max-height: 100px; object-fit: cover; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800"><i class="fab fa-facebook text-blue-600 mr-2"></i>FB Auto Poster - Simple</h1>
+            <p class="text-gray-600">Posting langsung ke grup Facebook</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left: Form -->
+            <div class="space-y-4">
+                <!-- Account Select -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <label class="block text-sm font-medium mb-2">Pilih Akun</label>
+                    <select id="accountSelect" class="w-full border rounded-lg px-3 py-2">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+
+                <!-- Text Content -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <label class="block text-sm font-medium mb-2">Isi Teks</label>
+                    <textarea id="postContent" rows="6" class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Ketik teks di sini, akan otomatis terisi di Facebook..."></textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-sync mr-1"></i> Teks akan otomatis terisi di Facebook saat kamu mengetik
+                    </p>
+                </div>
+
+                <!-- Media Upload - 2 Methods -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <label class="block text-sm font-medium mb-2">Gambar/Video (Opsional)</label>
+
+                    <!-- Method 1: File Upload -->
+                    <div class="mb-3">
+                        <p class="text-xs text-gray-600 mb-1">Metode 1: Upload File</p>
+                        <div id="dropZone" class="drop-zone rounded-lg p-4 text-center cursor-pointer">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                            <p class="text-sm text-gray-600">Klik atau drag & drop file di sini</p>
+                            <p class="text-xs text-gray-400">Mendukung: JPG, PNG, GIF, MP4, WEBM</p>
+                            <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden">
+                        </div>
+                        <div id="filePreview" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+
+                    <!-- Method 2: Path Input -->
+                    <div>
+                        <p class="text-xs text-gray-600 mb-1">Metode 2: Path File</p>
+                        <div id="pathList" class="space-y-2">
+                            <div class="flex gap-2">
+                                <input type="text" class="path-input flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="E:\folder\gambar.png">
+                                <button onclick="addPathInput()" class="bg-blue-100 px-3 py-2 rounded hover:bg-blue-200">
+                                    <i class="fas fa-plus text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Select -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <label class="block text-sm font-medium mb-2">Pilih Grup</label>
+                    <div id="groupsList" class="space-y-2 max-h-48 overflow-y-auto">
+                        <p class="text-gray-500 text-sm">Pilih akun untuk melihat grup</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2"><span id="selectedCount">0</span> grup dipilih</p>
+                </div>
+
+                <!-- Post Button -->
+                <button onclick="startPosting()" id="btnPost" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                    <i class="fas fa-paper-plane mr-2"></i>Posting Sekarang
+                </button>
+            </div>
+
+            <!-- Right: Status & Log -->
+            <div class="space-y-4">
+                <!-- Status -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-semibold mb-3">Status</h3>
+                    <div id="statusBox" class="bg-gray-50 rounded-lg p-4 text-center">
+                        <i class="fas fa-info-circle text-gray-400 text-2xl mb-2"></i>
+                        <p class="text-sm text-gray-600">Siap untuk posting</p>
+                    </div>
+                </div>
+
+                <!-- Log -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-semibold mb-3">Log</h3>
+                    <div id="logBox" class="bg-gray-900 rounded-lg p-3 max-h-96 overflow-y-auto font-mono text-xs">
+                        <p class="text-gray-400">Menunggu...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let accounts = [];
+        let groups = [];
+        let selectedGroups = new Set();
+        let uploadedFiles = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+            setupDropZone();
+            setupTextSync();
+        });
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                if (data.success) {
+                    accounts = data.accounts;
+                    const select = document.getElementById('accountSelect');
+                    select.innerHTML = '<option value="">Pilih akun...</option>';
+                    accounts.forEach(acc => {
+                        select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    });
+                    select.onchange = loadGroups;
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        }
+
+        async function loadGroups() {
+            const accountId = document.getElementById('accountSelect').value;
+            if (!accountId) return;
+
+            try {
+                const res = await fetch(`/api/groups?account_id=${accountId}`);
+                const data = await res.json();
+                if (data.success) {
+                    groups = data.groups;
+                    renderGroups();
+                }
+            } catch (e) {
+                console.error('Failed to load groups:', e);
+            }
+        }
+
+        function renderGroups() {
+            const container = document.getElementById('groupsList');
+            if (groups.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada grup</p>';
+                return;
+            }
+            container.innerHTML = groups.map(g => `
+                <label class="flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer">
+                    <input type="checkbox" value="${g.group_id}"
+                           ${selectedGroups.has(g.group_id) ? 'checked' : ''}
+                           onchange="toggleGroup('${g.group_id}')" class="mr-2">
+                    <span class="text-sm">${g.group_name || g.group_id}</span>
+                </label>
+            `).join('');
+            updateSelectedCount();
+        }
+
+        function toggleGroup(id) {
+            selectedGroups.has(id) ? selectedGroups.delete(id) : selectedGroups.add(id);
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedGroups.size;
+        }
+
+        // File Upload Setup
+        function setupDropZone() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.onclick = () => fileInput.click();
+
+            dropZone.ondragover = (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            };
+
+            dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+
+            dropZone.ondrop = (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            };
+
+            fileInput.onchange = (e) => handleFiles(e.target.files);
+        }
+
+        async function handleFiles(files) {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.success) {
+                        uploadedFiles.push(data.path);
+                        showPreview(file, data.path);
+                        addLog(`✅ Uploaded: ${file.name}`, 'success');
+                    }
+                } catch (e) {
+                    addLog(`❌ Upload failed: ${file.name}`, 'error');
+                }
+            }
+        }
+
+        function showPreview(file, path) {
+            const preview = document.getElementById('filePreview');
+            // Check file type, with fallback to extension for Windows
+            const ext = file.name.split('.').pop().toLowerCase();
+            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+            const isImage = file.type?.startsWith('image/') || imageExts.includes(ext);
+            const div = document.createElement('div');
+            div.className = 'relative';
+
+            if (isImage) {
+                const filename = path.split('/').pop();
+                div.innerHTML = `
+                    <img src="/uploads/${filename}" class="preview-img rounded">
+                    <button onclick="this.parentElement.remove()" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs">×</button>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="preview-img bg-gray-200 rounded flex items-center justify-center w-24 h-24">
+                        <i class="fas fa-video text-2xl text-gray-400"></i>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs">×</button>
+                `;
+            }
+            preview.appendChild(div);
+        }
+
+        function addPathInput() {
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `
+                <input type="text" class="path-input flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="E:\\folder\\gambar.png">
+                <button onclick="this.parentElement.remove()" class="bg-red-100 px-3 py-2 rounded hover:bg-red-200">
+                    <i class="fas fa-minus text-sm"></i>
+                </button>
+            `;
+            document.getElementById('pathList').appendChild(div);
+        }
+
+        // Text Sync - type in web, appears in Facebook
+        function setupTextSync() {
+            const textarea = document.getElementById('postContent');
+            let syncInterval;
+
+            textarea.oninput = () => {
+                // Debounce sync
+                clearTimeout(syncInterval);
+                syncInterval = setTimeout(() => syncTextToFacebook(textarea.value), 500);
+            };
+        }
+
+        async function syncTextToFacebook(text) {
+            // This will be handled by the server when posting starts
+            // For now, just store the text
+            window.currentText = text;
+        }
+
+        function addLog(msg, type = 'info') {
+            const box = document.getElementById('logBox');
+            const colors = { info: 'text-gray-300', success: 'text-green-400', error: 'text-red-400', warning: 'text-yellow-400' };
+            const time = new Date().toLocaleTimeString();
+            box.innerHTML += `<p class="${colors[type]}">[${time}] ${msg}</p>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function setStatus(msg, type = 'info') {
+            const box = document.getElementById('statusBox');
+            const icons = { info: 'fa-info-circle', success: 'fa-check-circle', error: 'fa-times-circle', loading: 'fa-spinner fa-spin' };
+            const colors = { info: 'text-gray-400', success: 'text-green-500', error: 'text-red-500', loading: 'text-blue-500' };
+            box.innerHTML = `
+                <i class="fas ${icons[type]} ${colors[type]} text-2xl mb-2"></i>
+                <p class="text-sm text-gray-600">${msg}</p>
+            `;
+        }
+
+        async function startPosting() {
+            const accountId = document.getElementById('accountSelect').value;
+            const content = document.getElementById('postContent').value;
+
+            if (!accountId) { alert('Pilih akun!'); return; }
+            if (!content) { alert('Isi teks!'); return; }
+            if (selectedGroups.size === 0) { alert('Pilih minimal 1 grup!'); return; }
+
+            // Get all image paths (uploaded + path input)
+            const pathInputs = document.querySelectorAll('.path-input');
+            const pathValues = Array.from(pathInputs).map(i => i.value).filter(v => v.trim());
+            const allImages = [...uploadedFiles, ...pathValues];
+
+            const postData = {
+                account_id: accountId,
+                content: content,
+                image_paths: allImages,
+                target_groups: Array.from(selectedGroups)
+            };
+
+            // UI updates
+            document.getElementById('btnPost').disabled = true;
+            setStatus('Memulai posting...', 'loading');
+            addLog('🚀 Memulai posting...', 'info');
+
+            try {
+                const res = await fetch('/api/post-now-simple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postData)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    setStatus(`Posting ke ${data.totalGroups} grup...`, 'loading');
+                    addLog(`📤 Posting ke ${data.totalGroups} grup`, 'info');
+
+                    // Poll for progress
+                    pollProgress(data.jobId);
+                } else {
+                    setStatus('Error: ' + data.error, 'error');
+                    addLog('❌ ' + data.error, 'error');
+                    document.getElementById('btnPost').disabled = false;
+                }
+            } catch (e) {
+                setStatus('Error: ' + e.message, 'error');
+                addLog('❌ ' + e.message, 'error');
+                document.getElementById('btnPost').disabled = false;
+            }
+        }
+
+        async function pollProgress(jobId) {
+            const interval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/post-progress/${jobId}`);
+                    const data = await res.json();
+
+                    if (data.done) {
+                        clearInterval(interval);
+                        document.getElementById('btnPost').disabled = false;
+
+                        if (data.success) {
+                            setStatus('✅ Posting selesai!', 'success');
+                            addLog('✅ Posting selesai!', 'success');
+                        } else {
+                            setStatus('❌ Posting gagal', 'error');
+                            addLog('❌ Posting gagal: ' + data.error, 'error');
+                        }
+                    } else {
+                        setStatus(`Posting... ${data.current}/${data.total}`, 'loading');
+                        if (data.lastLog) addLog(data.lastLog, data.logType || 'info');
+                    }
+                } catch (e) {
+                    clearInterval(interval);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
