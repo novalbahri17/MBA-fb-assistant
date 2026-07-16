@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .sidebar { min-height: 100vh; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
         .group-row:hover { background-color: #f9fafb; }
         .group-row.selected { background-color: #eff6ff; }
     </style>
@@ -20,31 +26,80 @@
                 <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
                 <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
             </div>
-            <nav class="mt-6">
-                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-home w-6"></i> Dashboard
-                </a>
-                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-users w-6"></i> Akun
-                </a>
-                <a href="groups.html" class="block py-3 px-6 bg-blue-600">
-                    <i class="fas fa-user-friends w-6"></i> Grup
-                </a>
-                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-paper-plane w-6"></i> Posting
-                </a>
-                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-clock w-6"></i> Jadwal
-                </a>
-                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-file-alt w-6"></i> Template
-                </a>
-                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-history w-6"></i> Riwayat
-                </a>
-                <a href="settings.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-cog w-6"></i> Pengaturan
-                </a>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-home w-6"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 bg-blue-600">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+                
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+                
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+                
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
             </nav>
         </div>
 
@@ -134,17 +189,6 @@
                     <select id="accountFilter" onchange="loadGroups()" class="border rounded-lg px-3 py-2">
                         <option value="">Semua Akun</option>
                     </select>
-                    <select id="typeFilter" onchange="loadGroups()" class="border rounded-lg px-3 py-2">
-                        <option value="">Semua Tipe</option>
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                        <option value="closed">Closed</option>
-                    </select>
-                    <select id="statusFilter" onchange="loadGroups()" class="border rounded-lg px-3 py-2">
-                        <option value="">Semua Status</option>
-                        <option value="joined">Sudah Join</option>
-                        <option value="not_joined">Belum Join</option>
-                    </select>
                     <div class="flex-1"></div>
                     
                     <!-- Bulk Actions -->
@@ -181,6 +225,21 @@
 
             <!-- Groups Table -->
             <div class="bg-white rounded-lg shadow overflow-hidden">
+                <!-- Table Header with Entries & Pagination Info -->
+                <div class="px-4 py-3 border-b flex justify-between items-center bg-gray-50">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-600">Show</span>
+                        <select id="entriesPerPage" onchange="changeEntriesPerPage()" class="border rounded px-2 py-1 text-sm">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="text-sm text-gray-600">entries</span>
+                    </div>
+                    <span class="text-sm text-gray-600" id="paginationInfo">Showing 0 of 0</span>
+                </div>
+                
                 <table class="w-full">
                     <thead class="bg-gray-50">
                         <tr>
@@ -204,7 +263,7 @@
                 
                 <!-- Pagination -->
                 <div class="px-4 py-3 border-t flex justify-between items-center">
-                    <span class="text-sm text-gray-600" id="paginationInfo">Showing 0 of 0</span>
+                    <span></span>
                     <div class="flex gap-2">
                         <button onclick="prevPage()" id="btnPrev" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">
                             <i class="fas fa-chevron-left"></i>
@@ -403,11 +462,22 @@
     </div>
 
     <script>
+        // Toggle sidebar section collapse/expand
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
+
         let accounts = [];
-        let groups = [];
+        let allGroups = []; // semua grup dari server
+        let displayedGroups = []; // grup yang sedang ditampilkan (sudah dipaginate)
         let selectedGroups = new Set();
         let currentPage = 1;
-        let totalPages = 1;
+        let entriesPerPage = 10;
+        let totalGroups = 0;
         
         // Scan-related variables
         let currentScanId = null;
@@ -481,20 +551,18 @@
                 let url = '/api/groups?';
                 if (accountId) url += `account_id=${accountId}&`;
                 
-                const typeFilter = document.getElementById('typeFilter').value;
-                if (typeFilter) url += `group_type=${typeFilter}&`;
-                
                 console.log('Fetching groups with URL:', url);
                 const res = await fetch(url);
                 const data = await res.json();
                 
                 if (data.success) {
-                    groups = data.groups;
-                    console.log(`Loaded ${groups.length} groups for account ${accountId || 'all'}`);
-                    renderGroups();
+                    allGroups = data.groups;
+                    totalGroups = allGroups.length;
+                    console.log(`Loaded ${allGroups.length} groups for account ${accountId || 'all'}`);
+                    applyPagination();
                     
                     // Update group count
-                    document.getElementById('accountGroupCount').textContent = groups.length;
+                    document.getElementById('accountGroupCount').textContent = totalGroups;
                     
                     if (accountId) loadStats(accountId);
                 }
@@ -519,53 +587,6 @@
             }
         }
 
-        function renderGroups() {
-            const tbody = document.getElementById('groupsTable');
-            
-            if (groups.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Tidak ada grup</td></tr>`;
-                return;
-            }
-            
-            tbody.innerHTML = groups.map(g => `
-                <tr class="group-row ${selectedGroups.has(g.id) ? 'selected' : ''}">
-                    <td class="px-4 py-3">
-                        <input type="checkbox" value="${g.id}" 
-                               ${selectedGroups.has(g.id) ? 'checked' : ''}
-                               onchange="toggleSelect(${g.id})" class="rounded group-checkbox">
-                    </td>
-                    <td class="px-4 py-3">
-                        <div class="font-medium text-gray-900">${g.group_name || 'Unknown'}</div>
-                        <div class="text-sm text-gray-500">ID: ${g.group_id}</div>
-                    </td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 text-xs rounded-full ${g.group_type === 'public' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                            ${g.group_type}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3">${parseInt(g.member_count || 0).toLocaleString()}</td>
-                    <td class="px-4 py-3">
-                        <span class="text-sm text-gray-600">${g.category || '-'}</span>
-                    </td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 text-xs rounded-full ${g.is_joined ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
-                            ${g.is_joined ? 'Joined' : 'Not Joined'}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3">
-                        <button onclick="deleteGroup(${g.id})" class="text-red-600 hover:text-red-800 mr-2" title="Hapus">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <a href="https://facebook.com/groups/${g.group_id}" target="_blank" class="text-blue-600 hover:text-blue-800" title="Buka">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                    </td>
-                </tr>
-            `).join('');
-            
-            updateBulkActions();
-        }
-
         function toggleSelect(id) {
             if (selectedGroups.has(id)) {
                 selectedGroups.delete(id);
@@ -578,7 +599,7 @@
         function toggleSelectAll() {
             const selectAll = document.getElementById('selectAll').checked;
             if (selectAll) {
-                groups.forEach(g => selectedGroups.add(g.id));
+                displayedGroups.forEach(g => selectedGroups.add(g.id));
             } else {
                 selectedGroups.clear();
             }
@@ -768,18 +789,92 @@
             }
         }
 
+        function changeEntriesPerPage() {
+            entriesPerPage = parseInt(document.getElementById('entriesPerPage').value);
+            currentPage = 1;
+            applyPagination();
+        }
+
         function prevPage() {
             if (currentPage > 1) {
                 currentPage--;
-                loadGroups();
+                applyPagination();
             }
         }
 
         function nextPage() {
+            const totalPages = Math.ceil(totalGroups / entriesPerPage);
             if (currentPage < totalPages) {
                 currentPage++;
-                loadGroups();
+                applyPagination();
             }
+        }
+
+        function applyPagination() {
+            // Slice groups based on current page and entries per page
+            const start = (currentPage - 1) * entriesPerPage;
+            const end = start + entriesPerPage;
+            displayedGroups = allGroups.slice(start, end);
+            
+            // Update pagination info
+            const totalPages = Math.ceil(totalGroups / entriesPerPage);
+            const showingFrom = totalGroups > 0 ? start + 1 : 0;
+            const showingTo = Math.min(end, totalGroups);
+            document.getElementById('paginationInfo').textContent = `Showing ${showingFrom}-${showingTo} of ${totalGroups}`;
+            
+            // Update button states
+            document.getElementById('btnPrev').disabled = currentPage <= 1;
+            document.getElementById('btnNext').disabled = currentPage >= totalPages;
+            
+            // Render the sliced groups
+            renderGroups();
+        }
+
+        function renderGroups() {
+            const tbody = document.getElementById('groupsTable');
+            
+            if (displayedGroups.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Tidak ada grup</td></tr>`;
+                return;
+            }
+            
+            tbody.innerHTML = displayedGroups.map(g => `
+                <tr class="group-row ${selectedGroups.has(g.id) ? 'selected' : ''}">
+                    <td class="px-4 py-3">
+                        <input type="checkbox" value="${g.id}" 
+                               ${selectedGroups.has(g.id) ? 'checked' : ''}
+                               onchange="toggleSelect(${g.id})" class="rounded group-checkbox">
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-gray-900">${g.group_name || 'Unknown'}</div>
+                        <div class="text-sm text-gray-500">ID: ${g.group_id}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full ${g.group_type === 'public' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${g.group_type}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">${parseInt(g.member_count || 0).toLocaleString()}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-sm text-gray-600">${g.category || '-'}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full ${g.is_joined ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
+                            ${g.is_joined ? 'Joined' : 'Not Joined'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <button onclick="deleteGroup(${g.id})" class="text-red-600 hover:text-red-800 mr-2" title="Hapus">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <a href="https://facebook.com/groups/${g.group_id}" target="_blank" class="text-blue-600 hover:text-blue-800" title="Buka">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updateBulkActions();
         }
 
         // ==================== SCAN FUNCTIONS ====================

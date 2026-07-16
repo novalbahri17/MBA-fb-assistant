@@ -14,6 +14,12 @@
         .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
         .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -28,28 +34,80 @@
                 <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
             </div>
             
-            <nav class="mt-6">
-                <a href="index.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-blue-500 bg-gray-800">
-                    <i class="fas fa-chart-line w-6"></i> Dashboard
-                </a>
-                <a href="accounts.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
-                    <i class="fas fa-users w-6"></i> Akun Facebook
-                </a>
-                <a href="groups.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
-                    <i class="fas fa-user-friends w-6"></i> Grup
-                </a>
-                <a href="post.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
-                    <i class="fas fa-paper-plane w-6"></i> Post Sekarang
-                </a>
-                <a href="scheduled.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
-                    <i class="fas fa-calendar-alt w-6"></i> Jadwal Posting
-                </a>
-                <a href="templates.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
-                    <i class="fas fa-file-alt w-6"></i> Template
-                </a>
-                <a href="history.html" class="nav-link block px-6 py-3 hover:bg-gray-800 transition-colors border-l-4 border-transparent">
-                    <i class="fas fa-history w-6"></i> Riwayat
-                </a>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 bg-blue-600">
+                        <i class="fas fa-chart-line w-6"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+                
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+                
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+                
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
             </nav>
             
             <div class="absolute bottom-0 left-0 right-0 p-6">
@@ -218,6 +276,15 @@
     </div>
 
     <script>
+        // Toggle sidebar section collapse/expand
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
+
         // Navigation
         function showPage(pageName) {
             document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));

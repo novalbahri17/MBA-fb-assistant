@@ -8,11 +8,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .sidebar { min-height: 100vh; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
         .status-scheduled { background: #dbeafe; color: #1e40af; }
         .status-processing { background: #fef3c7; color: #92400e; }
         .status-published { background: #d1fae5; color: #065f46; }
         .status-failed { background: #fee2e2; color: #991b1b; }
         .status-cancelled { background: #f3f4f6; color: #6b7280; }
+        .img-thumb { cursor: pointer; border: 2px solid transparent; border-radius: 4px; overflow: hidden; transition: all 0.2s; }
+        .img-thumb:hover { border-color: #4299e1; }
+        .img-thumb.selected { border-color: #48bb78; background-color: #f0fff4; }
+        .img-thumb img { width: 100%; height: 60px; object-fit: cover; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -23,45 +33,97 @@
                 <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
                 <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
             </div>
-            <nav class="mt-6">
-                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-home w-6"></i> Dashboard
-                </a>
-                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-users w-6"></i> Akun
-                </a>
-                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-user-friends w-6"></i> Grup
-                </a>
-                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-paper-plane w-6"></i> Posting
-                </a>
-                <a href="scheduled.html" class="block py-3 px-6 bg-blue-600">
-                    <i class="fas fa-clock w-6"></i> Jadwal
-                </a>
-                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-file-alt w-6"></i> Template
-                </a>
-                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-history w-6"></i> Riwayat
-                </a>
-                <a href="settings.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-cog w-6"></i> Pengaturan
-                </a>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-home w-6"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+                
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 bg-blue-600">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+                
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+                
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
             </nav>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 ml-64 p-8">
             <!-- Header -->
-            <div class="flex justify-between items-center mb-8">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Jadwal Posting</h2>
-                    <p class="text-gray-600">Kelola postingan yang dijadwalkan</p>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">Jadwal Posting</h2>
+                <p class="text-gray-600">Kelola postingan yang dijadwalkan untuk waktu tertentu</p>
+                <div class="flex gap-3 mt-3">
+                    <button onclick="openCreateModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                        <i class="fas fa-plus mr-2"></i>Buat Jadwal Baru
+                    </button>
+                    <button onclick="openTemplateModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
+                        <i class="fas fa-copy mr-2"></i>Pilih Template
+                    </button>
                 </div>
-                <a href="post.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i>Buat Jadwal Baru
-                </a>
             </div>
 
             <!-- Stats -->
@@ -159,7 +221,140 @@
         </div>
     </div>
 
+    <!-- Create Schedule Modal - Full Form like post.html -->
+    <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto py-8">
+        <div class="bg-white rounded-lg w-full max-w-6xl mx-4">
+            <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
+                <h3 class="text-xl font-bold">Buat Jadwal Baru</h3>
+                <button onclick="closeCreateModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Post Form - Left Column -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Pilih Akun *</label>
+                            <select id="createAccount" class="w-full border rounded-lg px-3 py-2" onchange="loadGroupsForCreate()">
+                                <option value="">Pilih akun...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Isi Teks <span class="text-gray-400 font-normal">(opsional)</span></label>
+                            <textarea id="createContent" rows="6" class="w-full border rounded-lg px-3 py-2"
+                                      placeholder="Tulis konten posting... (boleh kosong jika posting gambar saja)"></textarea>
+                        </div>
+
+                        <!-- Gallery Gambar -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Gambar (opsional)</label>
+                            <div id="createImgGallery" class="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto bg-gray-50 rounded-lg p-2">
+                                <p class="text-gray-400 text-sm col-span-4 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat...</p>
+                            </div>
+                            <div id="createGalleryPreview" class="flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">URL Link <span class="text-gray-400 font-normal">(opsional)</span></label>
+                            <input type="url" id="createLinkUrl" class="w-full border rounded-lg px-3 py-2" placeholder="https://example.com">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Delay (detik)</label>
+                                <input type="number" id="createDelay" class="w-full border rounded-lg px-3 py-2" value="120" min="30">
+                            </div>
+                            <div class="flex items-center pt-6">
+                                <input type="checkbox" id="createVariableDelay" class="mr-2" checked>
+                                <label class="text-sm">Variable Delay</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Groups - Right Column -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-semibold">Target Grup</h4>
+                            <div class="flex gap-2">
+                                <button onclick="selectAllGroupsCreate()" class="text-sm text-blue-600 hover:text-blue-800">Pilih Semua</button>
+                                <button onclick="deselectAllGroupsCreate()" class="text-sm text-gray-600 hover:text-gray-800">Batal Pilih</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <input type="text" id="createGroupSearch" placeholder="Cari grup..."
+                                   class="w-full border rounded-lg px-3 py-2" onkeyup="filterGroupsCreate()">
+                        </div>
+
+                        <div id="createGroupsList" class="space-y-2 max-h-72 overflow-y-auto">
+                            <p class="text-gray-500 text-center py-4">Pilih akun untuk melihat grup</p>
+                        </div>
+
+                        <div class="pt-4 border-t">
+                            <p class="text-sm text-gray-600">
+                                <span id="createSelectedCount">0</span> grup dipilih
+                            </p>
+                        </div>
+
+                        <!-- Schedule Time -->
+                        <div class="pt-4 border-t">
+                            <label class="block text-sm font-medium mb-2">Waktu Jadwal *</label>
+                            <input type="datetime-local" id="createTime" class="w-full border rounded-lg px-3 py-2">
+                            <div class="mt-2">
+                                <select id="createTimezone" class="w-full border rounded-lg px-3 py-2">
+                                    <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                                    <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
+                                    <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button onclick="closeCreateModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Batal</button>
+                <button onclick="saveCreate()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">
+                    <i class="fas fa-clock mr-2"></i>Jadwalkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Selection Modal -->
+    <div id="templateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-2xl m-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
+                <h3 class="text-xl font-bold">Pilih Template</h3>
+                <button onclick="closeTemplateModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <input type="text" id="templateSearch" placeholder="Cari template..."
+                           class="w-full border rounded-lg px-3 py-2" onkeyup="filterTemplatesModal()">
+                </div>
+                <div id="templateListModal" class="space-y-3 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Toggle sidebar section collapse/expand
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
+
         let scheduledPosts = [];
         let accounts = [];
 
@@ -168,6 +363,9 @@
             loadScheduled();
             // Auto refresh every 30 seconds
             setInterval(loadScheduled, 30000);
+
+            // Reload groups when account changes in create modal
+            document.getElementById('createAccount').addEventListener('change', loadGroupsForCreate);
         });
 
         async function loadAccounts() {
@@ -301,7 +499,7 @@
             const id = document.getElementById('editId').value;
             const scheduleTime = document.getElementById('editTime').value;
             const content = document.getElementById('editContent').value;
-            
+
             try {
                 const res = await fetch(`/api/scheduled-posts/${id}`, {
                     method: 'PUT',
@@ -311,13 +509,246 @@
                         content: content
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.success) {
                     closeEditModal();
                     loadScheduled();
                 } else {
                     alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function openCreateModal() {
+            // Load accounts into select
+            const select = document.getElementById('createAccount');
+            select.innerHTML = '<option value="">Pilih akun...</option>';
+            accounts.forEach(acc => {
+                select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+            });
+
+            // Reset form
+            document.getElementById('createContent').value = '';
+            document.getElementById('createDelay').value = '120';
+            document.getElementById('createVariableDelay').checked = true;
+            document.getElementById('createGroupSearch').value = '';
+            document.getElementById('createSelectedCount').textContent = '0';
+            createSelectedGroups = new Set();
+            createSelectedImages = [];
+
+            // Load image gallery
+            await loadImageGalleryCreate();
+
+            // Set default time to tomorrow 9am
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(9, 0, 0, 0);
+            document.getElementById('createTime').value = tomorrow.toISOString().slice(0, 16);
+
+            // Reset groups list
+            document.getElementById('createGroupsList').innerHTML = '<p class="text-gray-500 text-center py-4">Pilih akun untuk melihat grup</p>';
+
+            document.getElementById('createModal').classList.remove('hidden');
+            document.getElementById('createModal').classList.add('flex');
+        }
+
+        // Load images from uploads folder for create modal
+        async function loadImageGalleryCreate() {
+            const gallery = document.getElementById('createImgGallery');
+            if (!gallery) return;
+            gallery.innerHTML = '<p class="text-gray-400 text-sm col-span-4 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat...</p>';
+            try {
+                const res = await fetch('/api/uploads-images');
+                const data = await res.json();
+                if (data.images && data.images.length > 0) {
+                    gallery.innerHTML = data.images.map(img =>
+                        '<div class="img-thumb' + (createSelectedImages.includes(img.path) ? ' selected' : '') + '" onclick="toggleGalleryImgCreate(this,\'' + img.path + '\')">' +
+                        '<img src="' + img.path + '" alt="' + img.name + '" onerror="this.parentElement.style.display=\'none\'">' +
+                        '<div class="text-xs text-center truncate p-1 bg-gray-50">' + img.name + '</div></div>'
+                    ).join('');
+                } else {
+                    gallery.innerHTML = '<p class="text-gray-400 text-sm col-span-4 text-center py-4">Tidak ada gambar</p>';
+                }
+            } catch (e) {
+                gallery.innerHTML = '<p class="text-red-400 text-sm col-span-4 text-center py-4">Gagal memuat</p>';
+            }
+        }
+
+        function toggleGalleryImgCreate(el, path) {
+            el.classList.toggle('selected');
+            if (createSelectedImages.includes(path)) {
+                createSelectedImages = createSelectedImages.filter(p => p !== path);
+            } else {
+                createSelectedImages.push(path);
+            }
+            updateGallerySelectionCreate();
+        }
+
+        function updateGallerySelectionCreate() {
+            const preview = document.getElementById('createGalleryPreview');
+            if (!preview) return;
+            preview.innerHTML = '';
+            createSelectedImages.forEach(path => {
+                const filename = path.split('/').pop();
+                const div = document.createElement('div');
+                div.className = 'relative';
+                div.innerHTML = '<img src="' + path + '" class="w-16 h-16 object-cover rounded" style="height:60px;object-fit:cover;">' +
+                    '<button onclick="removeGalleryImgCreate(this,\'' + path + '\')" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">×</button>';
+                preview.appendChild(div);
+            });
+        }
+
+        function removeGalleryImgCreate(btn, path) {
+            btn.parentElement.remove();
+            createSelectedImages = createSelectedImages.filter(p => p !== path);
+            document.querySelectorAll('#createImgGallery .img-thumb').forEach(thumb => {
+                const img = thumb.querySelector('img');
+                if (img && img.src.includes(path)) thumb.classList.remove('selected');
+            });
+        }
+
+        let createGroups = [];
+        let createSelectedGroups = new Set();
+        let createSelectedImages = [];
+
+        async function loadGroupsForCreate() {
+            const accountId = document.getElementById('createAccount').value;
+            const container = document.getElementById('createGroupsList');
+
+            if (!accountId) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Pilih akun untuk melihat grup</p>';
+                createGroups = [];
+                createSelectedGroups.clear();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/groups?account_id=${accountId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    createGroups = data.groups;
+                    renderGroupsCreate();
+                }
+            } catch (e) {
+                container.innerHTML = '<p class="text-red-500 text-center py-4">Error memuat grup</p>';
+            }
+        }
+
+        function renderGroupsCreate() {
+            const container = document.getElementById('createGroupsList');
+
+            if (createGroups.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Tidak ada grup</p>';
+                return;
+            }
+
+            container.innerHTML = createGroups.map(g => `
+                <label class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <input type="checkbox" value="${g.group_id}"
+                           ${createSelectedGroups.has(g.group_id) ? 'checked' : ''}
+                           onchange="toggleGroupCreate('${g.group_id}')" class="mr-3">
+                    <div class="flex-1">
+                        <p class="font-medium">${g.group_name || g.group_id}</p>
+                        <p class="text-sm text-gray-500">${g.group_type} • ${parseInt(g.member_count || 0).toLocaleString()} member</p>
+                    </div>
+                </label>
+            `).join('');
+
+            updateSelectedCountCreate();
+        }
+
+        function toggleGroupCreate(groupId) {
+            if (createSelectedGroups.has(groupId)) {
+                createSelectedGroups.delete(groupId);
+            } else {
+                createSelectedGroups.add(groupId);
+            }
+            updateSelectedCountCreate();
+        }
+
+        function selectAllGroupsCreate() {
+            createGroups.forEach(g => createSelectedGroups.add(g.group_id));
+            renderGroupsCreate();
+        }
+
+        function deselectAllGroupsCreate() {
+            createSelectedGroups.clear();
+            renderGroupsCreate();
+        }
+
+        function updateSelectedCountCreate() {
+            document.getElementById('createSelectedCount').textContent = createSelectedGroups.size;
+        }
+
+        function filterGroupsCreate() {
+            const search = document.getElementById('createGroupSearch').value.toLowerCase();
+            const labels = document.querySelectorAll('#createGroupsList label');
+
+            labels.forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+            document.getElementById('createModal').classList.remove('flex');
+        }
+
+        async function saveCreate() {
+            const accountId = document.getElementById('createAccount').value;
+            const content = document.getElementById('createContent').value;
+            const scheduleTime = document.getElementById('createTime').value;
+            const timezone = document.getElementById('createTimezone').value;
+
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu');
+                return;
+            }
+
+            if (!content && createSelectedImages.length === 0) {
+                alert('Isi konten teks atau pilih gambar terlebih dahulu');
+                return;
+            }
+
+            if (createSelectedGroups.size === 0) {
+                alert('Pilih minimal 1 grup target');
+                return;
+            }
+
+            if (!scheduleTime) {
+                alert('Pilih waktu jadwal');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/scheduled-posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        facebook_account_id: accountId,
+                        post_type: createSelectedImages.length > 0 ? 'status_image' : 'status',
+                        content: content,
+                        link_url: document.getElementById('createLinkUrl').value || '',
+                        image_paths: createSelectedImages,
+                        target_ids: Array.from(createSelectedGroups),
+                        target_type: 'groups',
+                        schedule_time: new Date(scheduleTime).toISOString(),
+                        timezone: timezone
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    closeCreateModal();
+                    loadScheduled();
+                    alert('Jadwal berhasil dibuat');
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
@@ -359,6 +790,107 @@
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
+            }
+        }
+
+        async function openTemplateModal() {
+            document.getElementById('templateModal').classList.remove('hidden');
+            document.getElementById('templateModal').classList.add('flex');
+            document.getElementById('templateSearch').value = '';
+            await loadTemplatesForModal();
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('templateModal').classList.add('hidden');
+            document.getElementById('templateModal').classList.remove('flex');
+        }
+
+        async function loadTemplatesForModal() {
+            try {
+                const res = await fetch('/api/templates');
+                const data = await res.json();
+                if (data.success) {
+                    renderTemplatesModal(data.templates);
+                }
+            } catch (e) {
+                document.getElementById('templateListModal').innerHTML = '<p class="text-red-500 text-center py-4">Gagal memuat template</p>';
+            }
+        }
+
+        function renderTemplatesModal(templates) {
+            const container = document.getElementById('templateListModal');
+            if (templates.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Tidak ada template</p>';
+                return;
+            }
+            container.innerHTML = templates.map(t => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition" onclick="applyTemplateToSchedule(${t.id})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">${t.category}</span>
+                            </div>
+                            <h4 class="font-semibold text-gray-800">${t.name}</h4>
+                            <p class="text-sm text-gray-500 mt-1 line-clamp-2">${t.content || '(No content)'}</p>
+                            ${t.link_url ? `<p class="text-xs text-blue-600 mt-1 truncate"><i class="fas fa-link mr-1"></i>${t.link_url}</p>` : ''}
+                            ${t.image_paths ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>${JSON.parse(t.image_paths).length} gambar</p>` : ''}
+                        </div>
+                        <button class="text-purple-600 hover:text-purple-800 p-1 ml-2">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterTemplatesModal() {
+            const search = document.getElementById('templateSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('#templateListModal > div');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+
+        async function applyTemplateToSchedule(id) {
+            try {
+                const res = await fetch(`/api/templates/${id}`);
+                const data = await res.json();
+                if (data.success) {
+                    const t = data.template;
+
+                    // Open create modal first if not open
+                    await openCreateModal();
+
+                    // Apply content
+                    document.getElementById('createContent').value = t.content || '';
+
+                    // Apply link
+                    document.getElementById('createLinkUrl').value = t.link_url || '';
+
+                    // Apply delay settings
+                    document.getElementById('createDelay').value = t.delay_seconds || 120;
+                    document.getElementById('createVariableDelay').checked = t.use_variable_delay !== 0 && t.use_variable_delay !== false;
+
+                    // Apply images
+                    if (t.image_paths) {
+                        createSelectedImages = JSON.parse(t.image_paths);
+                        updateGallerySelectionCreate();
+                        document.querySelectorAll('#createImgGallery .img-thumb').forEach(thumb => {
+                            const img = thumb.querySelector('img');
+                            if (img && createSelectedImages.some(p => img.src.includes(p))) {
+                                thumb.classList.add('selected');
+                            }
+                        });
+                    }
+
+                    // Increment use count
+                    fetch(`/api/templates/${id}/use`, { method: 'POST' });
+
+                    closeTemplateModal();
+                }
+            } catch (e) {
+                alert('Error applying template: ' + e.message);
             }
         }
     </script>

@@ -127,7 +127,7 @@ class PostHistory {
                 SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
             FROM post_history
-            WHERE posted_at >= date('now', ? || ' days')
+            WHERE posted_at >= datetime('now', '-' || ? || ' days')
         `;
         const params = [`-${days}`];
         
@@ -142,8 +142,15 @@ class PostHistory {
     }
     
     static async deleteOld(days = 90) {
-        const sql = `DELETE FROM post_history WHERE posted_at < date('now', ? || ' days')`;
-        const result = await query(sql, [`-${days}`]);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const sql = `DELETE FROM post_history WHERE posted_at < datetime(?)`;
+        const result = await query(sql, [cutoffDate.toISOString()]);
+        return result.affectedRows;
+    }
+
+    static async deleteAll() {
+        const result = await query('DELETE FROM post_history');
         return result.affectedRows;
     }
 }

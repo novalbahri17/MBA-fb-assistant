@@ -814,21 +814,53 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
         try {
           let uploaded = false;
 
+          // STEP 0: Find and STORE the reference to the ACTIVE composer dialog
+          // Store it in window so all subsequent operations use the SAME dialog
+          const activeDialogRef = await page.evaluate(() => {
+            const dialogs = document.querySelectorAll('[role="dialog"]');
+            for (const dialog of dialogs) {
+              const ce = dialog.querySelector('[contenteditable="true"]');
+              if (ce) {
+                // Check this dialog has buttons (is a real composer, not just a comment box)
+                const buttons = dialog.querySelectorAll('button, [role="button"]');
+                const hasPostButton = Array.from(buttons).some(b => {
+                  const text = (b.innerText || '').toLowerCase();
+                  const al = (b.getAttribute('aria-label') || '').toLowerCase();
+                  return text.includes('posting') || text.includes('post') || al.includes('posting');
+                });
+                if (hasPostButton) {
+                  // Store the dialog's unique identifier
+                  window.__fbActiveComposerDialog = dialog;
+                  window.__fbActiveComposerHasPhotoBtn = true;
+                  // Find photo button and store it
+                  for (const el of dialog.querySelectorAll('[role="button"], button')) {
+                    const al = (el.getAttribute('aria-label') || '').toLowerCase();
+                    if (al.includes('foto') || al.includes('photo') || al.includes('kamera') || al.includes('camera') || al.includes('gambar') || al.includes('video')) {
+                      window.__fbActivePhotoBtn = el;
+                      window.__fbActivePhotoBtnLabel = al;
+                      return { found: true, photoLabel: al };
+                    }
+                  }
+                  return { found: true, noPhotoBtn: true };
+                }
+              }
+            }
+            return { found: false };
+          });
+          console.log(`📎 Active composer detected:`, JSON.stringify(activeDialogRef));
+
           // APPROACH 1: Upload langsung ke hidden file input tanpa klik tombol sama sekali
           // (tidak membuka OS file dialog)
           const markedDirect = await page.evaluate(() => {
             document.querySelectorAll('[data-fb-composer-upload]').forEach(el => el.removeAttribute('data-fb-composer-upload'));
-            const dialogs = document.querySelectorAll('[role="dialog"]');
+            // Use the stored active dialog reference
+            const dialog = window.__fbActiveComposerDialog;
+            if (!dialog) return 0;
             let count = 0;
-            for (const dialog of dialogs) {
-              const ce = dialog.querySelector('[contenteditable="true"]');
-              if (!ce) continue;
-              dialog.querySelectorAll('input[type="file"]').forEach(input => {
-                input.setAttribute('data-fb-composer-upload', 'true');
-                count++;
-              });
-              if (count > 0) break;
-            }
+            dialog.querySelectorAll('input[type="file"]').forEach(input => {
+              input.setAttribute('data-fb-composer-upload', 'true');
+              count++;
+            });
             return count;
           });
           console.log(`📎 Direct hidden file inputs in composer: ${markedDirect}`);
@@ -861,20 +893,23 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
               });
             });
 
-            // Klik tombol Foto di composer dialog
+            // Klik tombol Foto di composer dialog - USE STORED REFERENCE
             await page.evaluate(() => {
-              const dialogs = document.querySelectorAll('[role="dialog"]');
-              for (const dialog of dialogs) {
-                const ce = dialog.querySelector('[contenteditable="true"]');
-                if (!ce) continue;
-                const allEls = dialog.querySelectorAll('[role="button"], button, [aria-label]');
-                for (const el of allEls) {
-                  const al = (el.getAttribute('aria-label') || '').toLowerCase();
-                  if (al.includes('foto') || al.includes('photo') || al.includes('gambar') ||
-                      al.includes('video') || al.includes('camera') || al.includes('kamera')) {
-                    el.click();
-                    return;
-                  }
+              // First try stored active photo button
+              if (window.__fbActivePhotoBtn) {
+                window.__fbActivePhotoBtn.click();
+                return;
+              }
+              // Fallback: use stored dialog
+              const dialog = window.__fbActiveComposerDialog;
+              if (!dialog) return;
+              const allEls = dialog.querySelectorAll('[role="button"], button, [aria-label]');
+              for (const el of allEls) {
+                const al = (el.getAttribute('aria-label') || '').toLowerCase();
+                if (al.includes('foto') || al.includes('photo') || al.includes('gambar') ||
+                    al.includes('video') || al.includes('camera') || al.includes('kamera')) {
+                  el.click();
+                  return;
                 }
               }
             });
@@ -914,25 +949,47 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
                   uploaded = true;
                 }
               } else {
-                // Last resort: cari input[type=file] yang berada di dalam composer dialog
-                const handles = await page.$$('input[type="file"]');
-                for (const handle of handles) {
+                // Last resort: Use stored dialog reference to find file input
+                const lastResortSuccess = await page.evaluate(async (paths) => {
+                  const dialog = window.__fbActiveComposerDialog;
+                  if (!dialog) return false;
+                  
+                  // Find file input within the stored dialog
+                  const fileInput = dialog.querySelector('input[type="file"]');
+                  if (!fileInput) return false;
+                  
                   try {
-                    const inComposer = await page.evaluate(el => {
-                      const dialog = el.closest('[role="dialog"]');
-                      if (!dialog) return false;
-                      return dialog.querySelector('[contenteditable="true"]') !== null;
-                    }, handle);
-                    if (inComposer) {
-                      await handle.uploadFile(...absolutePaths);
-                      console.log(`✅ Upload via last-resort composer input`);
-                      await delay(12000);
-                      uploaded = true;
-                      break;
-                    }
-                  } catch (e3) {
-                    console.log(`📎 Last-resort handle error: ${e3.message}`);
+                    // Try to upload using the file input
+                    // Note: Puppeteer can't directly set files via evaluate in newer Chrome
+                    // But we can trigger the change event with DataTransfer
+                    const fs = require('fs');
+                    const pathModule = require('path');
+                    
+                    const fileBuffer = fs.readFileSync(paths[0]);
+                    const blob = new Blob([fileBuffer]);
+                    const fileObj = new File([blob], pathModule.basename(paths[0]), { type: 'image/png' });
+                    
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(fileObj);
+                    
+                    Object.defineProperty(fileInput, 'files', {
+                      value: dataTransfer.files,
+                      writable: true,
+                      configurable: true
+                    });
+                    
+                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    console.log('[LAST-RESORT] File uploaded via DataTransfer');
+                    return true;
+                  } catch (e) {
+                    console.log('[LAST-RESORT] Error:', e.message);
+                    return false;
                   }
+                }, absolutePaths);
+                
+                if (lastResortSuccess) {
+                  await delay(12000);
+                  uploaded = true;
                 }
               }
             }

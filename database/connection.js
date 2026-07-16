@@ -61,20 +61,29 @@ function query(sql, params = []) {
 function initializeDatabase() {
     try {
         const database = getDatabase();
-        
+
         // Read schema
         const schemaPath = path.join(__dirname, 'schema.sqlite.sql');
         let schema;
-        
+
         if (fs.existsSync(schemaPath)) {
             schema = fs.readFileSync(schemaPath, 'utf8');
         } else {
             // Fallback to MySQL schema converted to SQLite
             schema = getSQLiteSchema();
         }
-        
+
         // Execute schema
         database.exec(schema);
+
+        // Add missing columns to post_templates table (migration)
+        try {
+            database.exec(`ALTER TABLE post_templates ADD COLUMN delay_seconds INTEGER DEFAULT 120`);
+        } catch (e) { /* column already exists */ }
+        try {
+            database.exec(`ALTER TABLE post_templates ADD COLUMN use_variable_delay INTEGER DEFAULT 1`);
+        } catch (e) { /* column already exists */ }
+
         console.log('✅ Database tables initialized');
         return true;
     } catch (error) {
@@ -210,6 +219,8 @@ CREATE TABLE IF NOT EXISTS post_templates (
     link_url TEXT,
     image_paths TEXT,
     category TEXT DEFAULT 'general',
+    delay_seconds INTEGER DEFAULT 120,
+    use_variable_delay INTEGER DEFAULT 1,
     use_count INTEGER DEFAULT 0,
     last_used DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

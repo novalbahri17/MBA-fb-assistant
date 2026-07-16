@@ -8,10 +8,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .sidebar { min-height: 100vh; }
-        .template-card { transition: all 0.3s ease; }
-        .template-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .category-badge { font-size: 0.75rem; }
-        .use-count { font-size: 0.7rem; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
+        .img-thumb { cursor: pointer; border: 2px solid transparent; border-radius: 4px; overflow: hidden; transition: all 0.2s; }
+        .img-thumb:hover { border-color: #4299e1; }
+        .img-thumb.selected { border-color: #48bb78; background-color: #f0fff4; }
+        .img-thumb img { width: 100%; height: 60px; object-fit: cover; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -22,374 +28,317 @@
                 <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
                 <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
             </div>
-            <nav class="mt-6">
-                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-home w-6"></i> Dashboard
-                </a>
-                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-users w-6"></i> Akun
-                </a>
-                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-user-friends w-6"></i> Grup
-                </a>
-                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-paper-plane w-6"></i> Posting
-                </a>
-                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-clock w-6"></i> Jadwal
-                </a>
-                <a href="templates.html" class="block py-3 px-6 bg-blue-600">
-                    <i class="fas fa-file-alt w-6"></i> Template
-                </a>
-                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-history w-6"></i> Riwayat
-                </a>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-home w-6"></i> Dashboard
+                    </a>
+                </div>
+
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 bg-blue-600">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
             </nav>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 ml-64 p-8">
             <!-- Header -->
-            <div class="flex justify-between items-center mb-8">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Post Templates</h2>
-                    <p class="text-gray-600">Kelola template posting untuk digunakan kembali</p>
-                </div>
-                <button onclick="openCreateModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i>Buat Template
-                </button>
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">Post Templates</h2>
+                <p class="text-gray-600">Kelola template posting untuk digunakan di Post Sekarang dan Jadwal</p>
             </div>
 
-            <!-- Filters -->
-            <div class="bg-white rounded-lg shadow p-4 mb-6">
-                <div class="flex flex-wrap gap-4">
-                    <select id="categoryFilter" onchange="loadTemplates()" class="border rounded-lg px-3 py-2">
-                        <option value="">Semua Kategori</option>
-                    </select>
-                    <select id="postTypeFilter" onchange="loadTemplates()" class="border rounded-lg px-3 py-2">
-                        <option value="">Semua Tipe</option>
-                        <option value="status">Status</option>
-                        <option value="link">Link</option>
-                        <option value="image">Gambar</option>
-                        <option value="status_link">Status + Link</option>
-                        <option value="status_image">Status + Gambar</option>
-                    </select>
-                    <select id="accountFilter" onchange="loadTemplates()" class="border rounded-lg px-3 py-2">
-                        <option value="">Semua Akun</option>
-                    </select>
-                    <div class="flex-1"></div>
-                    <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Cari template..." 
-                               class="border rounded-lg px-3 py-2 pl-10 w-64" onkeyup="searchTemplates()">
-                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                    </div>
-                </div>
-            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Create/Edit Template Form - Left Panel (match post.html) -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4" id="formTitle">Template Baru</h3>
 
-            <!-- Templates Grid -->
-            <div id="templatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Templates will be loaded here -->
-            </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Nama Template *</label>
+                            <input type="text" id="templateName" class="w-full border rounded-lg px-3 py-2" placeholder="Contoh: Promo Lowongan">
+                        </div>
 
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden text-center py-12">
-                <i class="fas fa-file-alt text-6xl text-gray-300 mb-4"></i>
-                <h3 class="text-xl font-semibold text-gray-600">Belum ada template</h3>
-                <p class="text-gray-500 mt-2">Buat template pertama Anda untuk mempercepat posting</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create/Edit Template Modal -->
-    <div id="templateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg w-full max-w-2xl max-h-screen overflow-y-auto m-4">
-            <div class="p-6 border-b">
-                <h3 class="text-xl font-bold" id="modalTitle">Buat Template</h3>
-            </div>
-            <div class="p-6">
-                <form id="templateForm">
-                    <input type="hidden" id="templateId">
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">Nama Template *</label>
-                        <input type="text" id="templateName" required
-                               class="w-full border rounded-lg px-3 py-2" placeholder="Contoh: Promo Harian">
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-sm font-medium mb-2">Kategori</label>
                             <select id="templateCategory" class="w-full border rounded-lg px-3 py-2">
                                 <option value="general">Umum</option>
                                 <option value="promo">Promosi</option>
                                 <option value="info">Informasi</option>
-                                <option value="event">Event</option>
+                                <option value="loker">Lowongan</option>
                                 <option value="product">Produk</option>
+                                <option value="event">Event</option>
                                 <option value="other">Lainnya</option>
                             </select>
                         </div>
+
                         <div>
-                            <label class="block text-sm font-medium mb-2">Tipe Posting *</label>
-                            <select id="templatePostType" class="w-full border rounded-lg px-3 py-2">
-                                <option value="status">Status</option>
-                                <option value="link">Link</option>
-                                <option value="image">Gambar</option>
-                                <option value="status_link">Status + Link</option>
-                                <option value="status_image">Status + Gambar</option>
-                                <option value="link_image">Link + Gambar</option>
-                                <option value="status_link_image">Status + Link + Gambar</option>
-                            </select>
+                            <label class="block text-sm font-medium mb-2">Isi Teks <span class="text-gray-400 font-normal">(opsional)</span></label>
+                            <textarea id="templateContent" rows="5" class="w-full border rounded-lg px-3 py-2"
+                                      placeholder="Tulis konten posting..."></textarea>
                         </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">Konten</label>
-                        <textarea id="templateContent" rows="6"
-                                  class="w-full border rounded-lg px-3 py-2" 
-                                  placeholder="Tulis konten template...
-Gunakan {variable} untuk placeholder yang bisa diganti saat posting.
-Contoh: Halo {nama}, ada promo {produk} hari ini!"></textarea>
-                        <p class="text-xs text-gray-500 mt-1">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Gunakan {variable} untuk placeholder yang bisa diganti saat posting
-                        </p>
-                    </div>
-                    
-                    <div class="mb-4" id="linkUrlContainer">
-                        <label class="block text-sm font-medium mb-2">URL Link</label>
-                        <input type="url" id="templateLinkUrl"
-                               class="w-full border rounded-lg px-3 py-2" placeholder="https://example.com">
-                    </div>
-                    
-                    <div class="mb-4" id="imagesContainer">
-                        <label class="block text-sm font-medium mb-2">Gambar</label>
-                        <div id="imageList" class="space-y-2">
-                            <div class="flex gap-2">
-                                <input type="text" class="image-path flex-1 border rounded-lg px-3 py-2" 
-                                       placeholder="Path gambar...">
-                                <button type="button" onclick="addImageInput()" 
-                                        class="bg-gray-200 px-3 py-2 rounded hover:bg-gray-300">
-                                    <i class="fas fa-plus"></i>
-                                </button>
+
+                        <!-- Gallery Gambar -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Gambar (opsional)</label>
+                            <div id="templateImgGallery" class="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto bg-gray-50 rounded-lg p-2">
+                                <p class="text-gray-400 text-sm col-span-4 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat...</p>
+                            </div>
+                            <div id="templateGalleryPreview" class="flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">URL Link <span class="text-gray-400 font-normal">(opsional)</span></label>
+                            <input type="url" id="templateLinkUrl" class="w-full border rounded-lg px-3 py-2" placeholder="https://example.com">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Delay (detik)</label>
+                                <input type="number" id="templateDelay" class="w-full border rounded-lg px-3 py-2" value="120" min="30">
+                            </div>
+                            <div class="flex items-center pt-6">
+                                <input type="checkbox" id="templateVariableDelay" class="mr-2" checked>
+                                <label class="text-sm">Variable Delay</label>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">Akun (Opsional)</label>
-                        <select id="templateAccount" class="w-full border rounded-lg px-3 py-2">
-                            <option value="">Semua Akun (Global)</option>
+
+                    <div class="mt-6 flex gap-3">
+                        <button onclick="saveTemplate()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                            <i class="fas fa-save mr-2"></i>Simpan Template
+                        </button>
+                        <button onclick="clearForm()" class="px-4 py-3 border rounded-lg hover:bg-gray-100">
+                            <i class="fas fa-undo mr-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Templates List - Right Panel -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">Daftar Template</h3>
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Cari..."
+                                   class="border rounded-lg px-3 py-2 pl-9 w-40" onkeyup="searchTemplates()">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 flex flex-wrap gap-2">
+                        <select id="categoryFilter" onchange="loadTemplates()" class="border rounded-lg px-3 py-2 text-sm">
+                            <option value="">Semua</option>
+                            <option value="general">Umum</option>
+                            <option value="promo">Promosi</option>
+                            <option value="info">Informasi</option>
+                            <option value="loker">Lowongan</option>
+                            <option value="product">Produk</option>
+                            <option value="event">Event</option>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">
-                            Kosongkan untuk membuat template global yang bisa digunakan semua akun
+                    </div>
+
+                    <div id="templatesList" class="space-y-3 max-h-[500px] overflow-y-auto">
+                        <p class="text-gray-500 text-center py-8">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Memuat...
                         </p>
                     </div>
-                </form>
-            </div>
-            <div class="p-6 border-t flex justify-end gap-3">
-                <button onclick="closeModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">
-                    Batal
-                </button>
-                <button onclick="saveTemplate()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-save mr-2"></i>Simpan
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Use Template Modal -->
-    <div id="useTemplateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg w-full max-w-3xl max-h-screen overflow-y-auto m-4">
-            <div class="p-6 border-b">
-                <h3 class="text-xl font-bold">Gunakan Template</h3>
-                <p class="text-gray-600" id="useTemplateName"></p>
-            </div>
-            <div class="p-6">
-                <div id="variablesSection" class="mb-4 hidden">
-                    <label class="block text-sm font-medium mb-2">Variable Replacement</label>
-                    <div id="variablesList" class="space-y-2 bg-gray-50 p-4 rounded-lg">
-                        <!-- Variables will be shown here -->
-                    </div>
                 </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Preview Konten</label>
-                    <div id="contentPreview" class="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap min-h-[100px]"></div>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Pilih Akun *</label>
-                        <select id="useAccount" class="w-full border rounded-lg px-3 py-2">
-                            <option value="">Pilih akun...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Target Grup</label>
-                        <select id="useGroups" multiple class="w-full border rounded-lg px-3 py-2 h-32">
-                            <!-- Groups will be loaded -->
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6 border-t flex justify-end gap-3">
-                <button onclick="closeUseModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">
-                    Batal
-                </button>
-                <button onclick="postWithTemplate()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    <i class="fas fa-paper-plane mr-2"></i>Post Sekarang
-                </button>
-                <button onclick="scheduleWithTemplate()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-clock mr-2"></i>Jadwalkan
-                </button>
             </div>
         </div>
     </div>
 
     <script>
-        let templates = [];
-        let currentTemplate = null;
-        let accounts = [];
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
 
-        // Load data on page load
+        let templates = [];
+        let currentEditId = null;
+        let templateSelectedImages = [];
+
         document.addEventListener('DOMContentLoaded', () => {
             loadTemplates();
-            loadCategories();
-            loadAccounts();
+            loadTemplateImageGallery();
         });
+
+        async function loadTemplateImageGallery() {
+            const gallery = document.getElementById('templateImgGallery');
+            if (!gallery) return;
+            gallery.innerHTML = '<p class="text-gray-400 text-sm col-span-4 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat...</p>';
+            try {
+                const res = await fetch('/api/uploads-images');
+                const data = await res.json();
+                if (data.images && data.images.length > 0) {
+                    gallery.innerHTML = data.images.map(img =>
+                        '<div class="img-thumb' + (templateSelectedImages.includes(img.path) ? ' selected' : '') + '" onclick="toggleTemplateImg(this,\'' + img.path + '\')">' +
+                        '<img src="' + img.path + '" alt="' + img.name + '" onerror="this.parentElement.style.display=\'none\'">' +
+                        '<div class="text-xs text-center truncate p-1 bg-gray-50">' + img.name + '</div></div>'
+                    ).join('');
+                } else {
+                    gallery.innerHTML = '<p class="text-gray-400 text-sm col-span-4 text-center py-4">Tidak ada gambar</p>';
+                }
+            } catch (e) {
+                gallery.innerHTML = '<p class="text-red-400 text-sm col-span-4 text-center py-4">Gagal memuat</p>';
+            }
+        }
+
+        function toggleTemplateImg(el, path) {
+            el.classList.toggle('selected');
+            if (templateSelectedImages.includes(path)) {
+                templateSelectedImages = templateSelectedImages.filter(p => p !== path);
+            } else {
+                templateSelectedImages.push(path);
+            }
+            updateTemplateGalleryPreview();
+        }
+
+        function updateTemplateGalleryPreview() {
+            const preview = document.getElementById('templateGalleryPreview');
+            if (!preview) return;
+            preview.innerHTML = '';
+            templateSelectedImages.forEach(path => {
+                const div = document.createElement('div');
+                div.className = 'relative';
+                div.innerHTML = '<img src="' + path + '" class="w-16 h-16 object-cover rounded" style="height:60px;object-fit:cover;">' +
+                    '<button onclick="removeTemplateImg(this,\'' + path + '\')" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">×</button>';
+                preview.appendChild(div);
+            });
+        }
+
+        function removeTemplateImg(btn, path) {
+            btn.parentElement.remove();
+            templateSelectedImages = templateSelectedImages.filter(p => p !== path);
+            document.querySelectorAll('#templateImgGallery .img-thumb').forEach(thumb => {
+                const img = thumb.querySelector('img');
+                if (img && img.src.includes(path)) thumb.classList.remove('selected');
+            });
+        }
 
         async function loadTemplates() {
             try {
                 const params = new URLSearchParams();
-                const category = document.getElementById('categoryFilter').value;
-                const postType = document.getElementById('postTypeFilter').value;
-                const accountId = document.getElementById('accountFilter').value;
-                
+                const categoryEl = document.getElementById('categoryFilter');
+                const category = categoryEl ? categoryEl.value : '';
+
                 if (category) params.append('category', category);
-                if (postType) params.append('post_type', postType);
-                if (accountId) params.append('account_id', accountId);
-                
+
                 const response = await fetch(`/api/templates?${params}`);
                 const data = await response.json();
-                
+
                 if (data.success) {
                     templates = data.templates;
-                    renderTemplates();
+                    renderTemplatesList();
                 }
             } catch (error) {
                 console.error('Error loading templates:', error);
+                document.getElementById('templatesList').innerHTML = '<p class="text-red-500 text-center py-4">Gagal memuat template</p>';
             }
         }
 
-        async function loadCategories() {
-            try {
-                const response = await fetch('/api/templates/categories');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const select = document.getElementById('categoryFilter');
-                    data.categories.forEach(cat => {
-                        const option = document.createElement('option');
-                        option.value = cat;
-                        option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
-                        select.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading categories:', error);
-            }
-        }
+        function renderTemplatesList() {
+            const list = document.getElementById('templatesList');
 
-        async function loadAccounts() {
-            try {
-                const response = await fetch('/api/accounts');
-                const data = await response.json();
-                
-                if (data.success) {
-                    accounts = data.accounts;
-                    
-                    // Populate account filters
-                    const accountFilter = document.getElementById('accountFilter');
-                    const templateAccount = document.getElementById('templateAccount');
-                    const useAccount = document.getElementById('useAccount');
-                    
-                    accounts.forEach(acc => {
-                        accountFilter.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
-                        templateAccount.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
-                        useAccount.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading accounts:', error);
-            }
-        }
-
-        function renderTemplates() {
-            const grid = document.getElementById('templatesGrid');
-            const emptyState = document.getElementById('emptyState');
-            
             if (templates.length === 0) {
-                grid.innerHTML = '';
-                emptyState.classList.remove('hidden');
+                list.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-file-alt text-4xl text-gray-300 mb-3"></i>
+                        <p>Belum ada template</p>
+                        <p class="text-sm text-gray-400">Buat template pertama di form sebelah</p>
+                    </div>
+                `;
                 return;
             }
-            
-            emptyState.classList.add('hidden');
-            
-            grid.innerHTML = templates.map(template => `
-                <div class="template-card bg-white rounded-lg shadow p-6">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <span class="category-badge bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                ${template.category}
-                            </span>
-                            <span class="category-badge bg-gray-100 text-gray-600 px-2 py-1 rounded-full ml-2">
-                                ${template.post_type}
-                            </span>
+
+            list.innerHTML = templates.map(template => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50 transition">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">${template.category}</span>
+                            </div>
+                            <h4 class="font-semibold text-gray-800">${template.name}</h4>
+                            <p class="text-sm text-gray-500 mt-1 line-clamp-2">${template.content || '(No content)'}</p>
+                            ${template.link_url ? `<p class="text-xs text-blue-600 mt-1 truncate"><i class="fas fa-link mr-1"></i>${template.link_url}</p>` : ''}
+                            ${template.image_paths ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>${JSON.parse(template.image_paths).length} gambar</p>` : ''}
+                            <p class="text-xs text-gray-400 mt-2">${template.use_count || 0}x digunakan</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="editTemplate(${template.id})" 
-                                    class="text-blue-600 hover:text-blue-800" title="Edit">
+                        <div class="flex gap-2 ml-3">
+                            <button onclick="loadTemplateForEdit(${template.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="deleteTemplate(${template.id})" 
-                                    class="text-red-600 hover:text-red-800" title="Hapus">
+                            <button onclick="deleteTemplate(${template.id})" class="text-red-600 hover:text-red-800 p-1" title="Hapus">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                    </div>
-                    
-                    <h3 class="font-bold text-lg mb-2">${template.name}</h3>
-                    
-                    <div class="bg-gray-50 rounded p-3 mb-3 max-h-32 overflow-y-auto">
-                        <p class="text-sm text-gray-600 whitespace-pre-wrap">${template.content || '(No content)'}</p>
-                    </div>
-                    
-                    ${template.link_url ? `
-                        <div class="text-xs text-blue-600 mb-2 truncate">
-                            <i class="fas fa-link mr-1"></i>${template.link_url}
-                        </div>
-                    ` : ''}
-                    
-                    ${template.image_paths ? `
-                        <div class="text-xs text-green-600 mb-2">
-                            <i class="fas fa-image mr-1"></i>${JSON.parse(template.image_paths).length} gambar
-                        </div>
-                    ` : ''}
-                    
-                    <div class="flex justify-between items-center mt-4 pt-3 border-t">
-                        <div class="text-xs text-gray-500">
-                            <span class="use-count">
-                                <i class="fas fa-play-circle mr-1"></i>${template.use_count || 0}x digunakan
-                            </span>
-                            ${template.last_used ? `
-                                <span class="ml-2">Terakhir: ${new Date(template.last_used).toLocaleDateString()}</span>
-                            ` : ''}
-                        </div>
-                        <button onclick="useTemplate(${template.id})" 
-                                class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                            <i class="fas fa-play mr-1"></i>Gunakan
-                        </button>
                     </div>
                 </div>
             `).join('');
@@ -397,225 +346,143 @@ Contoh: Halo {nama}, ada promo {produk} hari ini!"></textarea>
 
         function searchTemplates() {
             const search = document.getElementById('searchInput').value.toLowerCase();
-            const cards = document.querySelectorAll('.template-card');
-            
-            cards.forEach((card, index) => {
-                const template = templates[index];
-                const match = template.name.toLowerCase().includes(search) ||
-                             (template.content && template.content.toLowerCase().includes(search));
-                card.style.display = match ? 'block' : 'none';
-            });
-        }
+            const filtered = templates.filter(t =>
+                t.name.toLowerCase().includes(search) ||
+                (t.content && t.content.toLowerCase().includes(search))
+            );
 
-        function openCreateModal() {
-            document.getElementById('modalTitle').textContent = 'Buat Template';
-            document.getElementById('templateForm').reset();
-            document.getElementById('templateId').value = '';
-            document.getElementById('imageList').innerHTML = `
-                <div class="flex gap-2">
-                    <input type="text" class="image-path flex-1 border rounded-lg px-3 py-2" placeholder="Path gambar...">
-                    <button type="button" onclick="addImageInput()" class="bg-gray-200 px-3 py-2 rounded hover:bg-gray-300">
-                        <i class="fas fa-plus"></i>
-                    </button>
+            const list = document.getElementById('templatesList');
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-search text-4xl text-gray-300 mb-3"></i>
+                        <p>Tidak ada template yang cocok</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = filtered.map(template => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50 transition">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">${template.category}</span>
+                            </div>
+                            <h4 class="font-semibold text-gray-800">${template.name}</h4>
+                            <p class="text-sm text-gray-500 mt-1 line-clamp-2">${template.content || '(No content)'}</p>
+                            <p class="text-xs text-gray-400 mt-2">${template.use_count || 0}x digunakan</p>
+                        </div>
+                        <div class="flex gap-2 ml-3">
+                            <button onclick="loadTemplateForEdit(${template.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteTemplate(${template.id})" class="text-red-600 hover:text-red-800 p-1" title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            `;
-            document.getElementById('templateModal').classList.remove('hidden');
-            document.getElementById('templateModal').classList.add('flex');
+            `).join('');
         }
 
-        function closeModal() {
-            document.getElementById('templateModal').classList.add('hidden');
-            document.getElementById('templateModal').classList.remove('flex');
-        }
-
-        function addImageInput() {
-            const div = document.createElement('div');
-            div.className = 'flex gap-2';
-            div.innerHTML = `
-                <input type="text" class="image-path flex-1 border rounded-lg px-3 py-2" placeholder="Path gambar...">
-                <button type="button" onclick="this.parentElement.remove()" class="bg-red-200 px-3 py-2 rounded hover:bg-red-300">
-                    <i class="fas fa-minus"></i>
-                </button>
-            `;
-            document.getElementById('imageList').appendChild(div);
+        function clearForm() {
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateCategory').value = 'general';
+            document.getElementById('templateContent').value = '';
+            document.getElementById('templateLinkUrl').value = '';
+            document.getElementById('templateDelay').value = '120';
+            document.getElementById('templateVariableDelay').checked = true;
+            document.getElementById('formTitle').textContent = 'Template Baru';
+            currentEditId = null;
+            templateSelectedImages = [];
+            updateTemplateGalleryPreview();
+            loadTemplateImageGallery();
         }
 
         async function saveTemplate() {
+            const name = document.getElementById('templateName').value.trim();
+            if (!name) {
+                alert('Nama template wajib diisi');
+                return;
+            }
+
             const templateData = {
-                name: document.getElementById('templateName').value,
+                name: name,
                 category: document.getElementById('templateCategory').value,
-                post_type: document.getElementById('templatePostType').value,
                 content: document.getElementById('templateContent').value,
-                link_url: document.getElementById('templateLinkUrl').value,
-                facebook_account_id: document.getElementById('templateAccount').value || null
+                link_url: document.getElementById('templateLinkUrl').value || null,
+                image_paths: templateSelectedImages,
+                delay_seconds: parseInt(document.getElementById('templateDelay').value) || 120,
+                use_variable_delay: document.getElementById('templateVariableDelay').checked
             };
-            
-            // Get image paths
-            const imageInputs = document.querySelectorAll('.image-path');
-            const imagePaths = Array.from(imageInputs)
-                .map(input => input.value)
-                .filter(path => path.trim() !== '');
-            templateData.image_paths = imagePaths;
-            
-            const templateId = document.getElementById('templateId').value;
-            const url = templateId ? `/api/templates/${templateId}` : '/api/templates';
-            const method = templateId ? 'PUT' : 'POST';
-            
+
+            const url = currentEditId ? `/api/templates/${currentEditId}` : '/api/templates';
+            const method = currentEditId ? 'PUT' : 'POST';
+
             try {
                 const response = await fetch(url, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(templateData)
                 });
-                
+
                 const data = await response.json();
                 if (data.success) {
-                    closeModal();
+                    alert(currentEditId ? 'Template berhasil diupdate!' : 'Template berhasil disimpan!');
+                    clearForm();
                     loadTemplates();
                 } else {
                     alert('Error: ' + data.error);
                 }
             } catch (error) {
-                alert('Error saving template: ' + error.message);
+                alert('Error: ' + error.message);
             }
         }
 
-        async function editTemplate(id) {
-            const template = templates.find(t => t.id === id);
-            if (!template) return;
-            
-            document.getElementById('modalTitle').textContent = 'Edit Template';
-            document.getElementById('templateId').value = template.id;
-            document.getElementById('templateName').value = template.name;
-            document.getElementById('templateCategory').value = template.category;
-            document.getElementById('templatePostType').value = template.post_type;
-            document.getElementById('templateContent').value = template.content || '';
-            document.getElementById('templateLinkUrl').value = template.link_url || '';
-            document.getElementById('templateAccount').value = template.facebook_account_id || '';
-            
-            // Load images
-            const imageList = document.getElementById('imageList');
-            const images = template.image_paths ? JSON.parse(template.image_paths) : [];
-            
-            if (images.length > 0) {
-                imageList.innerHTML = images.map((path, index) => `
-                    <div class="flex gap-2">
-                        <input type="text" class="image-path flex-1 border rounded-lg px-3 py-2" 
-                               value="${path}" placeholder="Path gambar...">
-                        <button type="button" onclick="this.parentElement.remove()" 
-                                class="bg-red-200 px-3 py-2 rounded hover:bg-red-300">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                    </div>
-                `).join('');
+        async function loadTemplateForEdit(id) {
+            try {
+                const response = await fetch(`/api/templates/${id}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const t = data.template;
+                    currentEditId = t.id;
+                    document.getElementById('templateName').value = t.name;
+                    document.getElementById('templateCategory').value = t.category || 'general';
+                    document.getElementById('templateContent').value = t.content || '';
+                    document.getElementById('templateLinkUrl').value = t.link_url || '';
+                    document.getElementById('templateDelay').value = t.delay_seconds || 120;
+                    document.getElementById('templateVariableDelay').checked = t.use_variable_delay !== false;
+                    document.getElementById('formTitle').textContent = 'Edit Template';
+
+                    templateSelectedImages = t.image_paths ? JSON.parse(t.image_paths) : [];
+                    updateTemplateGalleryPreview();
+                    loadTemplateImageGallery();
+
+                    document.querySelector('.bg-white.rounded-lg.shadow.p-6').scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (error) {
+                alert('Error loading template: ' + error.message);
             }
-            
-            document.getElementById('templateModal').classList.remove('hidden');
-            document.getElementById('templateModal').classList.add('flex');
         }
 
         async function deleteTemplate(id) {
             if (!confirm('Yakin ingin menghapus template ini?')) return;
-            
+
             try {
                 const response = await fetch(`/api/templates/${id}`, { method: 'DELETE' });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     loadTemplates();
                 } else {
                     alert('Error: ' + data.error);
                 }
             } catch (error) {
-                alert('Error deleting template: ' + error.message);
+                alert('Error: ' + error.message);
             }
-        }
-
-        function useTemplate(id) {
-            currentTemplate = templates.find(t => t.id === id);
-            if (!currentTemplate) return;
-            
-            document.getElementById('useTemplateName').textContent = currentTemplate.name;
-            
-            // Find variables in content
-            const content = currentTemplate.content || '';
-            const variableMatches = content.match(/\{([^}]+)\}/g) || [];
-            const variables = [...new Set(variableMatches)].map(v => v.slice(1, -1));
-            
-            const variablesSection = document.getElementById('variablesSection');
-            const variablesList = document.getElementById('variablesList');
-            
-            if (variables.length > 0) {
-                variablesSection.classList.remove('hidden');
-                variablesList.innerHTML = variables.map(v => `
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-mono bg-blue-100 px-2 py-1 rounded">{${v}}</span>
-                        <input type="text" class="variable-input flex-1 border rounded px-2 py-1" 
-                               data-variable="${v}" placeholder="Nilai untuk ${v}...">
-                    </div>
-                `).join('');
-            } else {
-                variablesSection.classList.add('hidden');
-            }
-            
-            updatePreview();
-            
-            // Add event listeners for variable inputs
-            document.querySelectorAll('.variable-input').forEach(input => {
-                input.addEventListener('input', updatePreview);
-            });
-            
-            document.getElementById('useTemplateModal').classList.remove('hidden');
-            document.getElementById('useTemplateModal').classList.add('flex');
-        }
-
-        function updatePreview() {
-            if (!currentTemplate) return;
-            
-            let content = currentTemplate.content || '';
-            
-            // Replace variables
-            document.querySelectorAll('.variable-input').forEach(input => {
-                const variable = input.dataset.variable;
-                const value = input.value;
-                const regex = new RegExp(`\\{${variable}\\}`, 'g');
-                content = content.replace(regex, value || `{${variable}}`);
-            });
-            
-            document.getElementById('contentPreview').textContent = content;
-        }
-
-        function closeUseModal() {
-            document.getElementById('useTemplateModal').classList.add('hidden');
-            document.getElementById('useTemplateModal').classList.remove('flex');
-            currentTemplate = null;
-        }
-
-        async function postWithTemplate() {
-            const accountId = document.getElementById('useAccount').value;
-            if (!accountId) {
-                alert('Pilih akun terlebih dahulu');
-                return;
-            }
-            
-            // Get final content with replaced variables
-            let content = currentTemplate.content || '';
-            document.querySelectorAll('.variable-input').forEach(input => {
-                const variable = input.dataset.variable;
-                const value = input.value;
-                const regex = new RegExp(`\\{${variable}\\}`, 'g');
-                content = content.replace(regex, value);
-            });
-            
-            // TODO: Implement posting with template
-            alert('Posting dengan template: ' + content.substring(0, 50) + '...');
-        }
-
-        function scheduleWithTemplate() {
-            // Redirect to scheduled page with template data
-            const params = new URLSearchParams();
-            params.append('template_id', currentTemplate.id);
-            window.location.href = 'scheduled.html?' + params.toString();
         }
     </script>
 </body>

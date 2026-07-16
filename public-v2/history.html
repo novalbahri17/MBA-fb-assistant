@@ -9,6 +9,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .sidebar { min-height: 100vh; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
         .status-success { background: #d1fae5; color: #065f46; }
         .status-failed { background: #fee2e2; color: #991b1b; }
         .status-pending { background: #fef3c7; color: #92400e; }
@@ -23,28 +29,80 @@
                 <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
                 <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
             </div>
-            <nav class="mt-6">
-                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-home w-6"></i> Dashboard
-                </a>
-                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-users w-6"></i> Akun
-                </a>
-                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-user-friends w-6"></i> Grup
-                </a>
-                <a href="post.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-paper-plane w-6"></i> Posting
-                </a>
-                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-clock w-6"></i> Jadwal
-                </a>
-                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-file-alt w-6"></i> Template
-                </a>
-                <a href="history.html" class="block py-3 px-6 bg-blue-600">
-                    <i class="fas fa-history w-6"></i> Riwayat
-                </a>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-home w-6"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+                
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+                
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 bg-blue-600">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+                
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
             </nav>
         </div>
 
@@ -200,6 +258,15 @@
     </div>
 
     <script>
+        // Toggle sidebar section collapse/expand
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
+
         let historyData = [];
         let currentPage = 1;
         let totalPages = 1;
@@ -559,16 +626,30 @@
         }
 
         async function clearOldHistory() {
-            if (!confirm('Hapus riwayat posting lebih dari 90 hari?')) return;
-            
+            const choice = confirm('Klik OK untuk hapus semua riwayat.\nKlik Cancel untuk hapus riwayat > 90 hari saja.');
+
             try {
-                const response = await fetch('/api/post-history/cleanup', { method: 'POST' });
+                let url = '/api/post-history/cleanup';
+                let method = 'POST';
+                let body = {};
+
+                if (choice) {
+                    url = '/api/post-history/clear-all';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    alert(`Berhasil menghapus ${data.deleted} riwayat lama`);
+                    alert(`Berhasil menghapus ${data.deleted} riwayat`);
                     loadHistory();
                     loadStats();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
                 alert('Error: ' + error.message);

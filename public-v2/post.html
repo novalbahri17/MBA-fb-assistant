@@ -15,6 +15,12 @@
         .img-thumb:hover { border-color: #4299e1; }
         .img-thumb.selected { border-color: #48bb78; background-color: #f0fff4; }
         .img-thumb img { width: 100%; height: 60px; object-fit: cover; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -25,31 +31,80 @@
                 <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
                 <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
             </div>
-            <nav class="mt-6">
-                <a href="index.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-home w-6"></i> Dashboard
-                </a>
-                <a href="accounts.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-users w-6"></i> Akun
-                </a>
-                <a href="groups.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-user-friends w-6"></i> Grup
-                </a>
-                <a href="post.html" class="block py-3 px-6 bg-blue-600">
-                    <i class="fas fa-paper-plane w-6"></i> Posting
-                </a>
-                <a href="scheduled.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-clock w-6"></i> Jadwal
-                </a>
-                <a href="templates.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-file-alt w-6"></i> Template
-                </a>
-                <a href="history.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-history w-6"></i> Riwayat
-                </a>
-                <a href="settings.html" class="block py-3 px-6 hover:bg-gray-800 transition">
-                    <i class="fas fa-cog w-6"></i> Pengaturan
-                </a>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-home w-6"></i> Dashboard
+                    </a>
+                </div>
+                
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+                
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 bg-blue-600">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+                
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+                
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
             </nav>
         </div>
 
@@ -93,6 +148,11 @@
                             </p>
                         </div>
 
+                        <div>
+                            <label class="block text-sm font-medium mb-2">URL Link <span class="text-gray-400 font-normal">(opsional)</span></label>
+                            <input type="url" id="linkUrl" class="w-full border rounded-lg px-3 py-2" placeholder="https://example.com">
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-2">Delay (detik)</label>
@@ -134,14 +194,15 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="mt-6 flex gap-4">
+            <div class="mt-6 flex gap-3">
                 <button onclick="startPosting()" id="btnPost" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold">
-                    <i class="fas fa-paper-plane mr-2"></i>Mulai Posting
+                    <i class="fas fa-paper-plane mr-2"></i>Mulai Posting Sekarang
                 </button>
-                <button onclick="schedulePost()" id="btnSchedule" class="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-semibold">
-                    <i class="fas fa-clock mr-2"></i>Jadwalkan
+                <button onclick="openTemplateModal()" class="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    <i class="fas fa-copy mr-2"></i>Pilih Template
                 </button>
             </div>
+            <p class="text-center text-sm text-gray-500 mt-2">ATAU <a href="scheduled.html" class="text-blue-600 hover:underline">jadwalkan untuk waktu lain</a></p>
 
             <!-- Progress Section -->
             <div id="progressSection" class="mt-6 bg-white rounded-lg shadow p-6 hidden">
@@ -211,7 +272,37 @@
         </div>
     </div>
 
+    <!-- Template Selection Modal -->
+    <div id="templateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-2xl m-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
+                <h3 class="text-xl font-bold">Pilih Template</h3>
+                <button onclick="closeTemplateModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <input type="text" id="templateSearch" placeholder="Cari template..."
+                           class="w-full border rounded-lg px-3 py-2" onkeyup="filterTemplatesModal()">
+                </div>
+                <div id="templateListModal" class="space-y-3 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Toggle sidebar section collapse/expand
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
+
         let accounts = [];
         let groups = [];
         let selectedGroups = new Set();
@@ -594,6 +685,105 @@
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
+            }
+        }
+
+        async function openTemplateModal() {
+            document.getElementById('templateModal').classList.remove('hidden');
+            document.getElementById('templateModal').classList.add('flex');
+            document.getElementById('templateSearch').value = '';
+            await loadTemplatesForModal();
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('templateModal').classList.add('hidden');
+            document.getElementById('templateModal').classList.remove('flex');
+        }
+
+        async function loadTemplatesForModal() {
+            try {
+                const res = await fetch('/api/templates');
+                const data = await res.json();
+                if (data.success) {
+                    renderTemplatesModal(data.templates);
+                }
+            } catch (e) {
+                document.getElementById('templateListModal').innerHTML = '<p class="text-red-500 text-center py-4">Gagal memuat template</p>';
+            }
+        }
+
+        function renderTemplatesModal(templates) {
+            const container = document.getElementById('templateListModal');
+            if (templates.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Tidak ada template</p>';
+                return;
+            }
+            container.innerHTML = templates.map(t => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition" onclick="applyTemplate(${t.id})">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">${t.category}</span>
+                            </div>
+                            <h4 class="font-semibold text-gray-800">${t.name}</h4>
+                            <p class="text-sm text-gray-500 mt-1 line-clamp-2">${t.content || '(No content)'}</p>
+                            ${t.link_url ? `<p class="text-xs text-blue-600 mt-1 truncate"><i class="fas fa-link mr-1"></i>${t.link_url}</p>` : ''}
+                            ${t.image_paths ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-image mr-1"></i>${JSON.parse(t.image_paths).length} gambar</p>` : ''}
+                        </div>
+                        <button class="text-purple-600 hover:text-purple-800 p-1 ml-2">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterTemplatesModal() {
+            const search = document.getElementById('templateSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('#templateListModal > div');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+
+        async function applyTemplate(id) {
+            try {
+                const res = await fetch(`/api/templates/${id}`);
+                const data = await res.json();
+                if (data.success) {
+                    const t = data.template;
+
+                    // Apply content
+                    document.getElementById('postContent').value = t.content || '';
+
+                    // Apply link
+                    document.getElementById('linkUrl').value = t.link_url || '';
+
+                    // Apply delay settings
+                    document.getElementById('delaySeconds').value = t.delay_seconds || 120;
+                    document.getElementById('useVariableDelay').checked = t.use_variable_delay !== 0 && t.use_variable_delay !== false;
+
+                    // Apply images
+                    if (t.image_paths) {
+                        selectedImages = JSON.parse(t.image_paths);
+                        updateGallerySelection();
+                        // Highlight selected images in gallery
+                        document.querySelectorAll('#imgGallery .img-thumb').forEach(thumb => {
+                            const img = thumb.querySelector('img');
+                            if (img && selectedImages.some(p => img.src.includes(p))) {
+                                thumb.classList.add('selected');
+                            }
+                        });
+                    }
+
+                    // Increment use count
+                    fetch(`/api/templates/${id}/use`, { method: 'POST' });
+
+                    closeTemplateModal();
+                }
+            } catch (e) {
+                alert('Error applying template: ' + e.message);
             }
         }
     </script>

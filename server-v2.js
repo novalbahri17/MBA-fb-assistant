@@ -1,9 +1,52 @@
 const express = require('express');
+const http = require('http');
 const path = require('path');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const cron = require('node-cron');
 const crypto = require('crypto');
+const WebSocket = require('ws');
+
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+// ============ WEBSOCKET SERVER ============
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Store all connected clients
+const wsClients = new Set();
+
+wss.on('connection', (ws) => {
+    wsClients.add(ws);
+    console.log('[WS] Client connected. Total clients:', wsClients.size);
+    
+    ws.on('close', () => {
+        wsClients.delete(ws);
+        console.log('[WS] Client disconnected. Total clients:', wsClients.size);
+    });
+    
+    ws.on('error', (err) => {
+        console.error('[WS] Client error:', err.message);
+        wsClients.delete(ws);
+    });
+});
+
+// Broadcast message to all WebSocket clients
+function broadcastToClients(message) {
+    if (wsClients.size === 0) return;
+    
+    const payload = JSON.stringify(message);
+    for (const client of wsClients) {
+        if (client.readyState === WebSocket.OPEN) {
+            try {
+                client.send(payload);
+            } catch (e) {
+                console.error('[WS] Send error:', e.message);
+            }
+        }
+    }
+}
 
 // Database
 const { initializeDatabase, testConnection, closePool, query } = require('./database/connection');
@@ -55,9 +98,6 @@ const upload = multer({
         }
     }
 });
-
-const app = express();
-const PORT = process.env.PORT || 8080;
 
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
@@ -111,7 +151,14 @@ const activeScans = new Map();
 // ============ WEBSOCKET BROADCAST ============
 function broadcastLog(message, type = 'info') {
     const timestamp = new Date().toLocaleTimeString();
-    console.log(`[${timestamp}] ${message}`);
+    const timestampStr = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    console.log(`[${timestampStr}] ${message}`);
+    // Send to all WebSocket clients
+    broadcastToClients({
+        message: message,
+        type: type,
+        timestamp: timestampStr
+    });
 }
 
 // ============ API ROUTES ============
@@ -1245,6 +1292,15 @@ app.delete('/api/templates/:id', async (req, res) => {
     }
 });
 
+app.post('/api/templates/:id/use', async (req, res) => {
+    try {
+        await Template.incrementUseCount(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ============ POST HISTORY API ============
 
 app.get('/api/post-history', async (req, res) => {
@@ -1279,6 +1335,15 @@ app.get('/api/post-history/daily', async (req, res) => {
 app.post('/api/post-history/cleanup', async (req, res) => {
     try {
         const deleted = await PostHistory.deleteOld(90);
+        res.json({ success: true, deleted });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/post-history/clear-all', async (req, res) => {
+    try {
+        const deleted = await PostHistory.deleteAll();
         res.json({ success: true, deleted });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -1369,7 +1434,7 @@ app.post('/api/restore', async (req, res) => {
 
 app.post('/api/reset', async (req, res) => {
     try {
-        await query('DELETE FROM post_history');
+        await query(`DELETE FROM post_history WHERE posted_at < datetime('now', '-90 days')`);
         await query('DELETE FROM scheduled_posts');
         await query('DELETE FROM fb_groups');
         await query('DELETE FROM post_templates');
@@ -1613,7 +1678,7 @@ async function startServer() {
 console.log("__dirname:", __dirname);
 console.log("img path:", path.join(__dirname, "img"));
 console.log("img exists:", require("fs").existsSync(path.join(__dirname, "img")));
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log('╔════════════════════════════════════════════════╗');
         console.log('║     🚀 FB AUTO POSTER PRO v2.0 - SERVER        ║');
         console.log('╠════════════════════════════════════════════════╣');
