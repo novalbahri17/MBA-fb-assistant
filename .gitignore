@@ -11,8 +11,8 @@ fb_cookies.json
 
 # Image uploads (file pribadi user)
 img/
-web-dashboard/uploads/
-web-dashboard/uploads/*
+# web-dashboard/uploads/ DI-COMMIT (berisi gambar contoh posting)
+# Tambahkan file pribadi ke sini hanya jika memang ingin ikut ter-push.
 
 # Environment files
 .env

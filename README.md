@@ -1,25 +1,28 @@
 # 🤖 Facebook Automate Post Groups
 
-Automate posting to Facebook groups with ease! This lightweight Node.js tool lets you schedule text, image, or link posts across multiple Facebook groups using session cookies—**no browser automation required**.
+Dashboard web + bot posting ke grup Facebook via Puppeteer + SQLite (`fb_auto_poster.db`).
 
-🚀 Perfect for **marketers**, **community managers**, or anyone managing multiple groups.
-⚠️ **Use responsibly** — automation may violate Facebook’s terms of service.
+🚀 Untuk **marketer**, **community manager**, atau siapa pun yang mengelola banyak grup.
+⚠️ **Gunakan dengan bijak** — automasi bisa melanggar ketentuan Facebook.
 
 ---
 
 ## ✨ Features
 
-* 📝 Post **text**, 📷 **images**, or 🔗 **links** to multiple Facebook groups.
-* ⏰ **Schedule** posts for specific times.
-* 🔐 Uses **session cookies** (no browser automation).
-* ⚡ **Lightweight** and easy to configure.
+* 📝 Post **teks** + 📷 **gambar** ke banyak grup sekaligus (Post Sekarang / Terjadwal / Template).
+* ⏸️ **Pause / Resume / Stop** saat posting berjalan; progress + log **tahan refresh**.
+* ⏱️ **Auto-pause 1 jam** saat terdeteksi SPAM atau `Network request timed out (ComposerStoryCreateMutation)` — lanjut otomatis dari grup yang sama, berulang tanpa batas.
+* 🚫 **Blacklist otomatis**: grup dengan error `Post box tidak ditemukan` langsung dihapus dari Manajemen Grup + dicatat agar tidak masuk lagi saat scan.
+* 🔐 Deteksi **sesi expired** (`session_invalid`) — tercatat di Riwayat, posting dihentikan.
+* 🔍 **Scan grup** yang sudah di-join + simpan ke database.
+* 👥 Multi-akun (login manual / import cookies), 🕒 scheduler (`node-cron`), 📊 riwayat + dashboard statistik.
 
 ---
 
 ## 📦 Prerequisites
 
-* 🛠️ Node.js installed on your system.
-* 🔑 Facebook session cookies (`fb_cookies.json`).
+* 🛠️ Node.js 18+ (`npm install` akan mengunduh `puppeteer`, `express`, `better-sqlite3`, dll).
+* 🌐 Koneksi internet + akun Facebook dengan cookies valid (diinput lewat dashboard, tersimpan di SQLite — bukan file `fb_cookies.json`).
 
 ---
 
@@ -28,8 +31,8 @@ Automate posting to Facebook groups with ease! This lightweight Node.js tool let
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/facebook-automate-post-groups.git
-   cd facebook-automate-post-groups
+   git clone https://github.com/novalbahri17/MBA-fb-assistant.git
+   cd MBA-fb-assistant
    ```
 
 2. Install dependencies:
@@ -38,41 +41,49 @@ Automate posting to Facebook groups with ease! This lightweight Node.js tool let
    npm install
    ```
 
+3. Jalankan server:
+
+   ```bash
+   node server-v2.js
+   # atau di Windows: START-SERVER.bat
+   ```
+
+4. Buka dashboard: `http://localhost:8080` (atau sesuai `PORT`).
+
 ---
 
 ## 🚀 Usage
 
-1. **Prepare your session cookies**:
-   Export your Facebook session cookies and save them as `fb_cookies.json` in the project root (Using `EditThisCookie (V3) 3.0.4`)
-
-2. **Add images** (if needed):
-   Place images in the `img/` folder to include them in posts.
-
-3. **Run the script**:
-
-   ```bash
-   node main.js
-   ```
-
-4. **Customize** the `post_to_group.js` file:
-   Define the Facebook group IDs, post content, and schedule to suit your needs.
+1. **Tambah akun**: buka halaman **Akun** → tambah via **Login Facebook** (browser otomatis) atau **Import Cookies** (paste JSON dari extension `EditThisCookie`).
+2. **Kumpulkan grup**: halaman **Grup** → **Scan Grup** → pilih hasil scan → **Simpan**.
+3. **Posting**: halaman **Post** → pilih akun + grup target + tulis konten / pilih gambar dari galeri → **Post Sekarang** (atau buat **Jadwal** / **Template**).
+4. Saat posting berjalan: tombol **Pause / Resume / Stop** tersedia; halaman boleh di-refresh — progress + log dipulihkan otomatis.
+5. Jika muncul SPAM / `Network request timed out`: sistem **auto-pause 1 jam** lalu lanjut sendiri dari grup yang sama (berulang tanpa batas). Grup tanpa post box otomatis masuk **Blacklist** dan hilang dari daftar.
 
 ---
 
 ## 🗂️ File Structure
 
 ```
-facebook-automate-post-groups/
-├── fb_cookies.json       # 🔑 Facebook session cookies file
-├── package.json          # 📦 Project dependencies
-├── post_to_group.js      # 🚀 Main script for posting
-├── README.md             # 📘 Documentation
-├── test.js               # 🧪 Test script
-├── img/                  # 🖼️ Image folder
-│   ├── 1-living-room-1.jpg
-│   ├── 2-bedroom-1.2.jpg
-│   ├── ...
+MBA-fb-assistant/
+├── server-v2.js             # 🚀 Entry point (Express + WebSocket + scheduler)
+├── fbPosterCore.js           # 🤖 Inti automasi Puppeteer (posting, deteksi spam/sesi/blacklist)
+├── fbLogin.js / fbScraper.js / groupScanner.js  # 🔑 Login, scrape, scan grup
+├── database/
+│   ├── connection.js        # 🗄️ SQLite (better-sqlite3) + migrasi tabel
+│   └── models/              # Account, Group, GroupBlacklist, PostHistory, ScheduledPost, Template
+├── public-v2/               # 🖥️ Dashboard (post, groups, history, scheduled, templates, ...)
+├── web-dashboard/uploads/   # 📤 Gambar yang diupload lewat dashboard
+├── img/                     # 🖼️ Gambar lokal (tidak di-commit)
+├── fb_auto_poster.db        # 🗄️ Database SQLite (tidak di-commit)
+├── package.json
+└── README.md
 ```
+
+> File sensitif (`fb_cookies.json`, `*.db`, `img/`, `.env`) **tidak di-commit** via `.gitignore`.
+> Folder `web-dashboard/uploads/` **di-commit** (berisi gambar contoh posting).
+
+---
 
 ---
 
@@ -82,14 +93,14 @@ Fitur ini memungkinkan Anda untuk secara otomatis memindai dan mengambil daftar 
 
 ### Cara Menggunakan
 
-1. Buka dashboard web di `http://localhost:3000/groups`
+1. Buka dashboard web di `http://localhost:8080/groups.html`
 2. Klik tombol **"Scan Grup"** di halaman Groups
 3. Pilih akun Facebook yang ingin digunakan
 4. Atur opsi scan (jumlah scroll maksimum, adaptive delay)
 5. Klik **"Mulai Scan"**
 6. Tunggu proses scan selesai
 7. Pilih grup yang ingin disimpan
-8. Klik **"Simpan yang Dipilih"**
+8. Klik **"Simpan yang Dipilih"** (grup yang sudah di-blacklist otomatis dilewati)
 
 ### API Endpoints
 
@@ -99,6 +110,14 @@ Fitur ini memungkinkan Anda untuk secara otomatis memindai dan mengambil daftar 
 | GET | `/api/groups/scan/:scanId` | Cek status scan |
 | POST | `/api/groups/scan/:scanId/cancel` | Batalkan scan |
 | POST | `/api/groups/save` | Simpan grup ke database |
+| GET | `/api/groups/blacklist` | Lihat grup blacklist |
+| DELETE | `/api/groups/blacklist/:groupId` | Keluarkan grup dari blacklist |
+| DELETE | `/api/groups/blacklist` | Kosongkan blacklist |
+| POST | `/api/post-now` | Posting sekarang (dengan pause/resume/stop + auto-pause) |
+| POST | `/api/post-now/pause` | Pause posting |
+| POST | `/api/post-now/resume` | Lanjutkan posting |
+| POST | `/api/post-now/stop` | Hentikan posting |
+| GET | `/api/post-now/current` | Snapshot progress + log (untuk pulihkan setelah refresh) |
 
 ### Modul groupScanner.js
 
@@ -120,6 +139,26 @@ Jalankan test suite untuk memverifikasi fitur scan:
 ```bash
 node test-group-scanner.js
 ```
+
+---
+
+## 🆕 Fitur Baru: Auto-Pause 1 Jam (Spam / Network Timeout)
+
+Saat posting berjalan dan terdeteksi **SPAM / akun dibatasi** atau error
+`Network request timed out. ComposerStoryCreateMutation(...)`:
+
+1. Posting **auto-pause 1 jam** (countdown per menit di log + badge di dashboard).
+2. Setelah 1 jam, progres **lanjut otomatis dari grup yang sama**.
+3. Jika terdeteksi lagi → auto-pause 1 jam lagi, **berulang tanpa batas** (tidak ada max retry).
+4. Tombol **Stop** tetap bisa menghentikan kapan saja; grup yang akan di-retry **tidak** ditulis ke Riwayat (bukan kegagalan final).
+
+## 🆕 Fitur Baru: Blacklist Grup Tanpa Post Box
+
+Grup dengan error `Post box tidak ditemukan di halaman utama` (composer dimatikan / grup dikunci admin):
+
+1. Otomatis masuk tabel `group_blacklist` + **dihapus dari Manajemen Grup**.
+2. Tidak akan masuk lagi saat scan berikutnya.
+3. Bisa dikeluarkan lagi lewat panel **Grup Blacklist** di halaman Grup, atau API `DELETE /api/groups/blacklist/:groupId`.
 
 ---
 
