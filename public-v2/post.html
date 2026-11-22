@@ -80,6 +80,19 @@
                     </a>
                 </div>
                 
+                <!-- Auto Join -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Auto Join</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="join-groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-plus w-6"></i> Auto Join Grup
+                    </a>
+                </div>
+                
                 <!-- Monitor -->
                 <div class="sidebar-section" onclick="toggleSection(this)">
                     <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
@@ -170,7 +183,10 @@
                 <div class="bg-white rounded-lg shadow p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold">Target Grup</h3>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="selectUnpostedGroups()" class="text-sm bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded-lg font-medium" title="Pilih hanya grup yang belum pernah dipost">
+                                <i class="fas fa-filter mr-1"></i>Belum Dipost
+                            </button>
                             <button onclick="selectAllGroups()" class="text-sm text-blue-600 hover:text-blue-800">Pilih Semua</button>
                             <button onclick="deselectAllGroups()" class="text-sm text-gray-600 hover:text-gray-800">Batal Pilih</button>
                         </div>
@@ -206,7 +222,27 @@
 
             <!-- Progress Section -->
             <div id="progressSection" class="mt-6 bg-white rounded-lg shadow p-6 hidden">
-                <h3 class="text-lg font-semibold mb-4">Progress Posting</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Progress Posting</h3>
+                    <div class="flex items-center gap-2">
+                        <span id="autoPauseBadge" class="hidden text-xs font-semibold px-3 py-1 rounded-full bg-orange-100 text-orange-800">
+                            <i class="fas fa-hourglass-half mr-1"></i>Auto-pause
+                        </span>
+                        <span id="postStateBadge" class="hidden text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                            <i class="fas fa-pause mr-1"></i>Dijeda
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Kontrol Pause / Stop -->
+                <div class="flex gap-3 mb-4">
+                    <button onclick="togglePausePosting()" id="btnPause" class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 font-semibold">
+                        <i class="fas fa-pause mr-2"></i>Pause
+                    </button>
+                    <button onclick="stopPosting()" id="btnStop" class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 font-semibold">
+                        <i class="fas fa-stop mr-2"></i>Stop
+                    </button>
+                </div>
 
                 <div class="mb-4">
                     <div class="flex justify-between text-sm mb-1">
@@ -307,17 +343,77 @@
         let groups = [];
         let selectedGroups = new Set();
         let isPosting = false;
+        let isPaused = false;
         let selectedImages = [];
+
+        // State progress posting (dipakai bersama oleh startPosting & resumePostingState)
+        let postWs = null;
+        let wsReconnectTimer = null;
+        let pTotal = 0;
+        let pProgress = 0;
+        let pSuccess = 0;
+        let pPending = 0;
+        let pFailed = 0;
 
         document.addEventListener('DOMContentLoaded', () => {
             loadAccounts();
             loadImageGallery();
+            restoreFormDraft();
 
             // Set default schedule time to 1 hour from now
             const now = new Date();
             now.setHours(now.getHours() + 1);
             document.getElementById('scheduleTime').value = now.toISOString().slice(0, 16);
+
+            // Pulihkan progress posting jika ada job yang masih berjalan
+            // (misalnya halaman di-refresh saat sedang posting)
+            resumePostingState();
+
+            // Simpan draft form setiap kali input berubah (agar tidak hilang saat refresh)
+            ['postContent', 'delaySeconds', 'useVariableDelay'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', saveFormDraft);
+                if (el) el.addEventListener('input', saveFormDraft);
+            });
+            const accSel = document.getElementById('accountSelect');
+            if (accSel) accSel.addEventListener('change', saveFormDraft);
         });
+
+        // ===== PERSIST FORM DRAFT (agar isian tidak hilang saat refresh) =====
+        const DRAFT_KEY = 'fb_post_draft';
+        function saveFormDraft() {
+            try {
+                const draft = {
+                    accountId: document.getElementById('accountSelect').value,
+                    content: document.getElementById('postContent').value,
+                    delaySeconds: document.getElementById('delaySeconds').value,
+                    useVariableDelay: document.getElementById('useVariableDelay').checked,
+                    groups: Array.from(selectedGroups),
+                    images: selectedImages
+                };
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            } catch (e) { /* ignore */ }
+        }
+
+        function restoreFormDraft() {
+            try {
+                const raw = localStorage.getItem(DRAFT_KEY);
+                if (!raw) return;
+                const d = JSON.parse(raw);
+                if (d.content) document.getElementById('postContent').value = d.content;
+                if (d.delaySeconds) document.getElementById('delaySeconds').value = d.delaySeconds;
+                if (typeof d.useVariableDelay === 'boolean') document.getElementById('useVariableDelay').checked = d.useVariableDelay;
+                if (Array.isArray(d.images)) {
+                    selectedImages = d.images;
+                    updateGallerySelection();
+                }
+                if (Array.isArray(d.groups)) {
+                    // terapkan setelah grup dimuat (loadGroups selesai render)
+                    window.__pendingDraftGroups = d.groups;
+                }
+                if (d.accountId) window.__pendingDraftAccount = d.accountId;
+            } catch (e) { /* ignore */ }
+        }
 
         // Load images from uploads folder
         async function loadImageGallery() {
@@ -349,6 +445,7 @@
                 selectedImages.push(path);
             }
             updateGallerySelection();
+            saveFormDraft();
         }
 
         function updateGallerySelection() {
@@ -372,6 +469,7 @@
                 const img = thumb.querySelector('img');
                 if (img && img.src.includes(path)) thumb.classList.remove('selected');
             });
+            saveFormDraft();
         }
 
         async function loadAccounts() {
@@ -385,6 +483,13 @@
                     accounts.forEach(acc => {
                         select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
                     });
+
+                    // Terapkan akun dari draft (jika ada) lalu muat grupnya
+                    if (window.__pendingDraftAccount) {
+                        select.value = window.__pendingDraftAccount;
+                        window.__pendingDraftAccount = null;
+                        loadGroups();
+                    }
                 }
             } catch (e) {
                 console.error('Failed to load accounts:', e);
@@ -404,6 +509,17 @@
 
                 if (data.success) {
                     groups = data.groups;
+
+                    // Terapkan grup terpilih dari draft (setelah refresh)
+                    if (window.__pendingDraftGroups) {
+                        const validIds = new Set(groups.map(g => g.group_id));
+                        selectedGroups.clear();
+                        window.__pendingDraftGroups.forEach(id => {
+                            if (validIds.has(id)) selectedGroups.add(id);
+                        });
+                        window.__pendingDraftGroups = null;
+                    }
+
                     renderGroups();
                 }
             } catch (e) {
@@ -441,16 +557,42 @@
                 selectedGroups.add(groupId);
             }
             updateSelectedCount();
+            saveFormDraft();
         }
 
         function selectAllGroups() {
             groups.forEach(g => selectedGroups.add(g.group_id));
             renderGroups();
+            saveFormDraft();
         }
 
         function deselectAllGroups() {
             selectedGroups.clear();
             renderGroups();
+            saveFormDraft();
+        }
+
+        async function selectUnpostedGroups() {
+            const accountId = document.getElementById('accountSelect').value;
+            if (!accountId) {
+                alert('Pilih akun terlebih dahulu');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/groups/posted-ids?account_id=${accountId}`);
+                const data = await res.json();
+                const postedIds = new Set(data.posted_ids || []);
+
+                selectedGroups.clear();
+                groups.forEach(g => {
+                    if (!postedIds.has(g.group_id)) selectedGroups.add(g.group_id);
+                });
+                renderGroups();
+                addLog(`✅ ${selectedGroups.size} grup belum dipost dipilih (dari history)`, 'info');
+                saveFormDraft();
+            } catch (e) {
+                addLog('❌ Gagal ambil data history: ' + e.message, 'error');
+            }
         }
 
         function updateSelectedCount() {
@@ -468,7 +610,7 @@
         }
 
         function addLog(message, type = 'info') {
-            const console = document.getElementById('logConsole');
+            const logBox = document.getElementById('logConsole');
             const colors = {
                 info: 'text-gray-300',
                 success: 'text-green-400',
@@ -477,8 +619,67 @@
             };
 
             const time = new Date().toLocaleTimeString();
-            console.innerHTML += `<p class="log-entry ${colors[type]}">[${time}] ${message}</p>`;
-            console.scrollTop = console.scrollHeight;
+            logBox.innerHTML += `<p class="log-entry ${colors[type]}">[${time}] ${message}</p>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // Update seluruh tampilan progress dari satu objek state
+        function applyProgress(job) {
+            const total = job.total || 0;
+            const current = job.current || 0;
+            const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressText').textContent = `${current}/${total}`;
+            document.getElementById('successCount').textContent = job.success || 0;
+            document.getElementById('pendingCount').textContent = job.pending || 0;
+            document.getElementById('failedCount').textContent = job.failed || 0;
+        }
+
+        // Pulihkan tampilan progress + log setelah halaman di-refresh
+        async function resumePostingState() {
+            try {
+                const res = await fetch('/api/post-now/current');
+                const data = await res.json();
+                const job = data.job || {};
+
+                if (data.active || job.active) {
+                    // Job masih berjalan -> tampilkan progress & sambung kembali WebSocket
+                    document.getElementById('progressSection').classList.remove('hidden');
+                    document.getElementById('btnPost').disabled = true;
+                    document.getElementById('btnPost').classList.add('opacity-50');
+                    isPosting = true;
+                    isPaused = !!data.paused;
+                    setPostControlsEnabled(true);
+                    updatePauseButton();
+                    updateAutoPauseBadge(data.autoPaused, data.autoPauseUntil, data.autoPauseReason);
+                    applyProgress(job);
+
+                    const logBox = document.getElementById('logConsole');
+                    logBox.innerHTML = '';
+                    (job.logs || []).forEach(l => {
+                        const colors = { info: 'text-gray-300', success: 'text-green-400', warning: 'text-yellow-400', error: 'text-red-400' };
+                        logBox.innerHTML += `<p class="log-entry ${colors[l.type] || 'text-gray-300'}">[${l.timestamp || ''}] ${l.message}</p>`;
+                    });
+                    logBox.scrollTop = logBox.scrollHeight;
+                    addLog('🔄 Halaman dimuat ulang — menampilkan kembali progress posting yang sedang berjalan...', 'info');
+
+                    // Sambungkan ulang WebSocket tanpa memulai job baru
+                    connectPostWs(job.total || 0, job.current || 0, job.success || 0, job.pending || 0, job.failed || 0);
+                } else if (job.finished && (job.total || 0) > 0) {
+                    // Job baru saja selesai -> tampilkan hasil akhirnya
+                    document.getElementById('progressSection').classList.remove('hidden');
+                    applyProgress(job);
+                    const logBox = document.getElementById('logConsole');
+                    logBox.innerHTML = '';
+                    (job.logs || []).forEach(l => {
+                        const colors = { info: 'text-gray-300', success: 'text-green-400', warning: 'text-yellow-400', error: 'text-red-400' };
+                        logBox.innerHTML += `<p class="log-entry ${colors[l.type] || 'text-gray-300'}">[${l.timestamp || ''}] ${l.message}</p>`;
+                    });
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+            } catch (e) {
+                // diamkan — tidak ada job
+            }
         }
 
         async function startPosting() {
@@ -529,14 +730,16 @@
             document.getElementById('btnPost').disabled = true;
             document.getElementById('btnPost').classList.add('opacity-50');
             isPosting = true;
+            isPaused = false;
+            setPostControlsEnabled(true);
+            updatePauseButton();
 
-            // Connect WebSocket for real-time progress
-            let ws = null;
-            let currentTotal = selectedGroups.size;
-            let currentProgress = 0;
-            let successCount = 0;
-            let pendingCount = 0;
-            let failedCount = 0;
+            // Reset state progress
+            pTotal = selectedGroups.size;
+            pProgress = 0;
+            pSuccess = 0;
+            pPending = 0;
+            pFailed = 0;
 
             try {
                 const res = await fetch('/api/post-now', {
@@ -548,86 +751,196 @@
                 const data = await res.json();
                 if (data.success) {
                     addLog(`Posting dimulai ke ${data.totalGroups} grup`, 'success');
-                    currentTotal = data.totalGroups;
-
-                    // Connect WebSocket for real-time updates
-                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    ws = new WebSocket(`${protocol}//${window.location.host}`);
-
-                    ws.onopen = () => {
-                        addLog('🔌 Connected to server', 'info');
-                    };
-
-                    ws.onmessage = (event) => {
-                        try {
-                            const log = JSON.parse(event.data);
-                            addLog(log.message, log.type);
-
-                            // Track per-GROUP progress — increment only on group start marker like "[1/1]"
-                            // or on the "✅ Success: ..." / "❌ Failed: ..." completion messages
-                            const msg = log.message || '';
-                            const groupMatch = msg.match(/\[(\d+)\/(\d+)\]/);
-                            const isGroupStart = groupMatch !== null;
-                            const isGroupSuccess = log.type === 'success' && (msg.includes('✅') || msg.includes('Success:'));
-                            const isGroupFailed = log.type === 'error' || msg.includes('❌');
-                            const isFinalDone = msg.includes('POSTING COMPLETE') || msg.includes('selesai') || msg.includes('Selesai') || msg.includes('COMPLETE');
-
-                            if (isGroupSuccess) {
-                                successCount++;
-                                document.getElementById('successCount').textContent = successCount;
-                                currentProgress++;
-                            } else if (isGroupFailed && !isGroupStart) {
-                                failedCount++;
-                                document.getElementById('failedCount').textContent = failedCount;
-                                currentProgress++;
-                            }
-
-                            // Update progress bar only on actual group completion (not intermediate logs)
-                            if (isGroupSuccess || (isGroupFailed && !isGroupStart)) {
-                                const percent = currentTotal > 0 ? (currentProgress / currentTotal) * 100 : 0;
-                                document.getElementById('progressBar').style.width = percent + '%';
-                                document.getElementById('progressText').textContent = `${currentProgress}/${currentTotal}`;
-                            }
-
-                            // Final cleanup
-                            if (isFinalDone) {
-                                if (ws) ws.close();
-                                isPosting = false;
-                                document.getElementById('btnPost').disabled = false;
-                                document.getElementById('btnPost').classList.remove('opacity-50');
-                                // Final progress = 100%
-                                document.getElementById('progressBar').style.width = '100%';
-                                document.getElementById('progressText').textContent = `${currentTotal}/${currentTotal}`;
-                            }
-                        } catch (e) {
-                            console.error('WebSocket parse error:', e);
-                        }
-                    };
-
-                    ws.onerror = (error) => {
-                        addLog('⚠️ WebSocket error - may miss real-time updates', 'warning');
-                    };
-
-                    ws.onclose = () => {
-                        if (isPosting) {
-                            addLog('🔌 Connection closed', 'info');
-                            isPosting = false;
-                            document.getElementById('btnPost').disabled = false;
-                            document.getElementById('btnPost').classList.remove('opacity-50');
-                        }
-                    };
-
+                    pTotal = data.totalGroups;
+                    connectPostWs(pTotal, 0, 0, 0, 0);
                 } else {
                     addLog('Error: ' + data.error, 'error');
-                    isPosting = false;
-                    document.getElementById('btnPost').disabled = false;
-                    document.getElementById('btnPost').classList.remove('opacity-50');
+                    resetPostingUi();
                 }
             } catch (e) {
                 addLog('Error: ' + e.message, 'error');
-                isPosting = false;
-                document.getElementById('btnPost').disabled = false;
-                document.getElementById('btnPost').classList.remove('opacity-50');
+                resetPostingUi();
+            }
+        }
+
+        function resetPostingUi() {
+            isPosting = false;
+            isPaused = false;
+            const btnPost = document.getElementById('btnPost');
+            if (btnPost) {
+                btnPost.disabled = false;
+                btnPost.classList.remove('opacity-50');
+            }
+            setPostControlsEnabled(false);
+        }
+
+        // Sambungkan WebSocket untuk progress real-time.
+        // Dipakai saat mulai posting baru DAN saat memulihkan setelah refresh.
+        function connectPostWs(total, current, success, pending, failed) {
+            if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+            if (postWs) { try { postWs.onclose = null; postWs.close(); } catch (e) {} }
+
+            pTotal = total; pProgress = current; pSuccess = success; pPending = pending; pFailed = failed;
+
+            function open(isReconnect) {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                postWs = new WebSocket(`${protocol}//${window.location.host}`);
+
+                postWs.onopen = () => {
+                    addLog(isReconnect ? '🔌 Reconnected to server' : '🔌 Connected to server', 'info');
+                };
+
+                postWs.onmessage = (event) => {
+                    try {
+                        const log = JSON.parse(event.data);
+                        addLog(log.message, log.type);
+
+                        const msg = log.message || '';
+                        const groupMatch = msg.match(/\[(\d+)\/(\d+)\]/);
+                        const isGroupStart = groupMatch !== null;
+                        const isPending = msg.includes('⏳') || msg.includes('Pending approval');
+                        const isGroupSuccess = log.type === 'success' && (msg.includes('✅') || msg.includes('Success:')) && !isPending;
+                        const isGroupFailed = log.type === 'error' || msg.includes('❌');
+                        const isFinalDone = msg.includes('POSTING COMPLETE') || msg.includes('POSTING DIHENTIKAN') || msg.includes('selesai') || msg.includes('Selesai') || msg.includes('COMPLETE');
+
+                        if (isGroupSuccess) {
+                            pSuccess++;
+                            pProgress++;
+                        } else if (isPending && !isGroupStart) {
+                            pPending++;
+                            pProgress++;
+                        } else if (isGroupFailed && !isGroupStart) {
+                            pFailed++;
+                            pProgress++;
+                        }
+
+                        if (isGroupSuccess || isPending || isGroupFailed) {
+                            applyProgress({ total: pTotal, current: pProgress, success: pSuccess, pending: pPending, failed: pFailed });
+                        }
+
+                        if (isFinalDone) {
+                            if (postWs) { try { postWs.onclose = null; postWs.close(); } catch (e) {} }
+                            resetPostingUi();
+                            document.getElementById('progressBar').style.width = '100%';
+                            document.getElementById('progressText').textContent = `${pTotal}/${pTotal}`;
+                        }
+
+                        // Status auto-pause 1 jam (spam / network timeout)
+                        if (msg.includes('AUTO-PAUSE')) {
+                            const m = msg.match(/sampai\s+(\d{1,2}[.:]\d{2}(?::\d{2})?)/i);
+                            let until = null;
+                            if (m) {
+                                const now = new Date();
+                                const [h, mi, s] = m[1].split(/[.:]/).map(n => parseInt(n, 10));
+                                until = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, mi, s || 0);
+                                if (until < now) until.setDate(until.getDate() + 1);
+                            }
+                            updateAutoPauseBadge(true, until ? until.toISOString() : null, msg);
+                        } else if (msg.includes('Auto-pause selesai') || isFinalDone) {
+                            updateAutoPauseBadge(false);
+                        }
+                    } catch (e) {
+                        console.error('WebSocket parse error:', e);
+                    }
+                };
+
+                postWs.onerror = () => addLog('⚠️ WebSocket error', 'warning');
+
+                postWs.onclose = () => {
+                    if (isPosting) {
+                        addLog('🔌 Connection lost - reconnecting in 3s...', 'warning');
+                        wsReconnectTimer = setTimeout(() => { if (isPosting) open(true); }, 3000);
+                    }
+                };
+            }
+
+            open(false);
+        }
+
+        // ===== PAUSE / RESUME / STOP POSTING =====
+
+        function setPostControlsEnabled(enabled) {
+            const btnPause = document.getElementById('btnPause');
+            const btnStop = document.getElementById('btnStop');
+            if (!btnPause || !btnStop) return;
+            btnPause.disabled = !enabled;
+            btnStop.disabled = !enabled;
+            [btnPause, btnStop].forEach(b => b.classList.toggle('opacity-50', !enabled));
+            if (!enabled) {
+                isPaused = false;
+                updatePauseButton();
+                updateAutoPauseBadge(false);
+            }
+        }
+
+        function updatePauseButton() {
+            const btnPause = document.getElementById('btnPause');
+            const badge = document.getElementById('postStateBadge');
+            if (!btnPause) return;
+
+            if (isPaused) {
+                btnPause.innerHTML = '<i class="fas fa-play mr-2"></i>Resume';
+                btnPause.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                btnPause.classList.add('bg-green-600', 'hover:bg-green-700');
+                if (badge) { badge.classList.remove('hidden'); badge.classList.add('inline-block'); }
+            } else {
+                btnPause.innerHTML = '<i class="fas fa-pause mr-2"></i>Pause';
+                btnPause.classList.remove('bg-green-600', 'hover:bg-green-700');
+                btnPause.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                if (badge) { badge.classList.add('hidden'); badge.classList.remove('inline-block'); }
+            }
+        }
+
+        // Tampilkan status auto-pause 1 jam (spam / network timeout)
+        function updateAutoPauseBadge(autoPaused, until, reason) {
+            const badge = document.getElementById('autoPauseBadge');
+            if (!badge) return;
+            if (!autoPaused) {
+                badge.classList.add('hidden');
+                badge.classList.remove('inline-block');
+                badge.removeAttribute('title');
+                return;
+            }
+            const untilTxt = until ? new Date(until).toLocaleTimeString() : '-';
+            badge.innerHTML = `<i class="fas fa-hourglass-half mr-1"></i>Auto-pause s/d ${untilTxt}`;
+            badge.title = reason || 'Menunggu sebelum melanjutkan otomatis';
+            badge.classList.remove('hidden');
+            badge.classList.add('inline-block');
+        }
+
+        async function togglePausePosting() {
+            if (!isPosting) return;
+            const endpoint = isPaused ? '/api/post-now/resume' : '/api/post-now/pause';
+            try {
+                const res = await fetch(endpoint, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    isPaused = !isPaused;
+                    updatePauseButton();
+                    addLog(isPaused ? '⏸️ Posting dijeda.' : '▶️ Posting dilanjutkan.', isPaused ? 'warning' : 'info');
+                } else {
+                    addLog('⚠️ ' + (data.error || 'Gagal mengubah status pause'), 'warning');
+                }
+            } catch (e) {
+                addLog('❌ Gagal: ' + e.message, 'error');
+            }
+        }
+
+        async function stopPosting() {
+            if (!isPosting) return;
+            if (!confirm('Yakin ingin menghentikan posting? Grup yang belum diproses akan dilewati.')) return;
+            try {
+                const res = await fetch('/api/post-now/stop', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    addLog('🛑 Menghentikan posting...', 'warning');
+                    const btnStop = document.getElementById('btnStop');
+                    if (btnStop) { btnStop.disabled = true; btnStop.classList.add('opacity-50'); }
+                } else {
+                    addLog('⚠️ ' + (data.error || 'Gagal menghentikan posting'), 'warning');
+                }
+            } catch (e) {
+                addLog('❌ Gagal: ' + e.message, 'error');
             }
         }
 

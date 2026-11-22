@@ -53,17 +53,18 @@ const { initializeDatabase, testConnection, closePool, query } = require('./data
 const Account = require('./database/models/Account');
 const ScheduledPost = require('./database/models/ScheduledPost');
 const Group = require('./database/models/Group');
+const GroupBlacklist = require('./database/models/GroupBlacklist');
 const Template = require('./database/models/Template');
 const PostHistory = require('./database/models/PostHistory');
 
 // Core functions
-const { launchBrowserWithCookies, postToGroup, delay } = require('./fbPosterCore');
+const { launchBrowserWithCookies, postToGroup, joinGroupOnPage, delay } = require('./fbPosterCore');
 const { scrapeJoinedGroups, searchGroupsByKeyword, joinGroup } = require('./fbScraper');
 const { openFacebookForLogin, extractProfileFromCookies } = require('./fbLogin');
 const puppeteer = require('puppeteer');
 
 // Group scanner
-const { scanJoinedGroups, searchAndJoinGroups } = require('./groupScanner');
+const { scanJoinedGroups, searchAndJoinGroups, searchGroupsFiltered, joinGroupFromSearchPage } = require('./groupScanner');
 
 // Export/Import helpers
 const fs = require('fs');
@@ -137,22 +138,186 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
+// Anti-cache untuk halaman HTML — browser selalu memuat versi terbaru
+app.use((req, res, next) => {
+    if (req.path.endsWith('.html') || req.path === '/') {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+    }
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public-v2')));
 app.use('/uploads', express.static(path.join(__dirname, 'web-dashboard', 'uploads')));
 
 
 // Global state
 let isPosting = false;
+let isAutoJoining = false;
 let currentJob = null;
+
+// ============ POSTING CONTROL (Pause / Resume / Stop) ============
+// State kontrol untuk job posting yang sedang berjalan via /api/post-now
+const postControl = {
+    active: false,        // apakah ada job yang sedang berjalan
+    paused: false,        // apakah job sedang di-pause (manual oleh pengguna)
+    stopped: false,       // apakah job dihentikan permanen
+    autoPaused: false,    // apakah sedang auto-pause (spam / network timeout)
+    autoPauseUntil: null, // ISO timestamp kapan auto-pause berakhir
+    autoPauseReason: null,// alasan auto-pause terakhir
+    resumeResolve: null,  // resolver untuk membangunkan loop yang sedang pause
+    log: () => {}         // callback log (di-set saat job mulai)
+};
+
+function resetPostControl() {
+    postControl.active = false;
+    postControl.paused = false;
+    postControl.stopped = false;
+    postControl.autoPaused = false;
+    postControl.autoPauseUntil = null;
+    postControl.autoPauseReason = null;
+    if (postControl.resumeResolve) {
+        postControl.resumeResolve();
+        postControl.resumeResolve = null;
+    }
+}
+
+// ============ AUTO-PAUSE (Spam / Network Timeout) ============
+// Durasi jeda otomatis setiap kali terdeteksi spam / network timeout.
+const AUTO_PAUSE_MS = 60 * 60 * 1000; // 1 jam (tetap)
+
+// Cek apakah pesan error menandakan gangguan jaringan / composer gagal kirim.
+function isNetworkTimeoutError(message) {
+    if (!message) return false;
+    const msg = String(message).toLowerCase();
+    return (
+        msg.includes('network request timed out') ||
+        msg.includes('composerstorycreatemutation') ||
+        msg.includes('net::err_') ||
+        msg.includes('timeouterror') ||
+        msg.includes('navigation timeout') ||
+        msg.includes('timeout') ||
+        msg.includes('econnreset') ||
+        msg.includes('socket hang up') ||
+        msg.includes('target closed') ||
+        msg.includes('protocol error')
+    );
+}
+
+// Delay yang bisa diinterupsi: memotong waktu tunggu saat pause/stop ditekan.
+// Mengembalikan true jika dihentikan (stop), false jika selesai / resume biasa.
+async function interruptibleDelay(ms, pollMs = 500) {
+    let remaining = ms;
+
+    while (remaining > 0) {
+        if (postControl.stopped) return true;
+
+        // Tunggu sampai resume jika sedang di-pause
+        if (postControl.paused) {
+            await new Promise(resolve => { postControl.resumeResolve = resolve; });
+            continue;
+        }
+
+        const slice = Math.min(pollMs, remaining);
+        await delay(slice);
+        remaining -= slice;
+    }
+
+    return postControl.stopped;
+}
+
+// Blokir selama pause. Mengembalikan true jika dihentikan (stop).
+async function waitWhilePaused() {
+    while (postControl.paused && !postControl.stopped) {
+        await new Promise(resolve => { postControl.resumeResolve = resolve; });
+    }
+    return postControl.stopped;
+}
+
+// ============ JOB BUFFER (untuk pulihkan progress setelah refresh) ============
+// Menyimpan progress + log job posting yang sedang berjalan di memori server,
+// supaya ketika halaman dashboard di-refresh, progress & log TIDAK hilang.
+const activePostJob = {
+    active: false,
+    finished: false,
+    startedAt: null,
+    finishedAt: null,
+    total: 0,
+    current: 0,
+    success: 0,
+    pending: 0,
+    failed: 0,
+    logs: [],       // { message, type, timestamp }
+    summary: null
+};
+
+function resetActivePostJob(totalGroups = 0) {
+    activePostJob.active = true;
+    activePostJob.finished = false;
+    activePostJob.startedAt = new Date().toISOString();
+    activePostJob.finishedAt = null;
+    activePostJob.total = totalGroups;
+    activePostJob.current = 0;
+    activePostJob.success = 0;
+    activePostJob.pending = 0;
+    activePostJob.failed = 0;
+    activePostJob.logs = [];
+    activePostJob.summary = null;
+}
 
 // Scan tracking: scanId -> scan data
 const activeScans = new Map();
+
+// Auto-join tracking: joinId -> join data
+const activeJoins = new Map();
+
+// ============ GRUP BLACKLIST ============
+// Grup yang tidak punya post box ("Post box tidak ditemukan di halaman utama")
+// dianggap blacklist: dihapus dari Manajemen Grup + dicatat agar tidak masuk lagi
+// saat scan berikutnya.
+async function blacklistGroup(groupId, accountId, groupName, reason, log) {
+    const gid = String(groupId);
+    try {
+        await GroupBlacklist.add(gid, {
+            accountId: accountId ?? null,
+            groupName: groupName || null,
+            reason: reason || 'Post box tidak ditemukan di halaman utama'
+        });
+
+        let removedRows = 0;
+        try {
+            const deleted = await Group.deleteByGroupId(gid, accountId ?? null);
+            if (deleted) removedRows++;
+        } catch (e) {
+            console.error('[blacklist] Gagal menghapus dari fb_groups:', e.message);
+        }
+
+        if (log) {
+            log(`🚫 Grup ${gid} masuk BLACKLIST — dihapus dari Manajemen Grup.`, 'warning');
+        }
+        return { ok: true, removedRows };
+    } catch (e) {
+        if (log) log(`⚠️ Gagal mem-blacklist grup ${gid}: ${e.message}`, 'warning');
+        return { ok: false, removedRows: 0, error: e.message };
+    }
+}
 
 // ============ WEBSOCKET BROADCAST ============
 function broadcastLog(message, type = 'info') {
     const timestamp = new Date().toLocaleTimeString();
     const timestampStr = new Date().toLocaleTimeString('en-GB', { hour12: false });
     console.log(`[${timestampStr}] ${message}`);
+
+    // Simpan ke buffer job supaya bisa dipulihkan setelah refresh halaman.
+    if (activePostJob.active) {
+        activePostJob.logs.push({ message, type, timestamp: timestampStr });
+        // Batasi jumlah log agar memori tidak membengkak
+        if (activePostJob.logs.length > 1000) {
+            activePostJob.logs.splice(0, activePostJob.logs.length - 1000);
+        }
+    }
+
     // Send to all WebSocket clients
     broadcastToClients({
         message: message,
@@ -408,6 +573,410 @@ app.post('/api/join-group/:accountId', async (req, res) => {
         res.json({ success: true, joined });
 
     } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============ AUTO JOIN GROUPS API ============
+
+// POST /api/auto-join-groups - Start auto-join with filters
+app.post('/api/auto-join-groups', async (req, res) => {
+    const {
+        account_id,
+        keyword,
+        max_groups = 100,
+        skip_joined = true,        // skip groups already joined
+        min_members = 0,           // minimum member count filter
+        nearby = false,            // filter "Di sekitar saya" (grup lokal)
+        public_only = false,       // filter "Grup publik" (hanya grup publik)
+        auto_answer = 'Setuju dengan aturan grup dan ingin bergabung untuk berdiskusi.',
+        delay_seconds = 60,        // delay between joins
+        use_variable_delay = true
+    } = req.body;
+
+    if (isAutoJoining) {
+        return res.status(400).json({ success: false, error: 'Auto-join already in progress' });
+    }
+
+    if (!account_id || !keyword) {
+        return res.status(400).json({ success: false, error: 'Account ID and keyword are required' });
+    }
+
+    const joinId = crypto.randomUUID();
+
+    // Initialize join tracking entry
+    activeJoins.set(joinId, {
+        id: joinId,
+        accountId: account_id,
+        keyword,
+        status: 'searching',
+        phase: 'searching',
+        foundGroups: 0,
+        targetGroups: 0,
+        joined: 0,
+        alreadyJoined: 0,
+        pending: 0,
+        failed: 0,
+        full: 0,
+        totalMembers: 0,
+        currentGroup: null,
+        results: { success: [], alreadyJoined: [], pending: [], failed: [], full: [] },
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        browser: null,
+        abortController: new AbortController()
+    });
+
+    res.json({ success: true, joinId, message: 'Auto-join started' });
+
+    // Set flag immediately to prevent concurrent auto-join
+    isAutoJoining = true;
+
+    // Run in background
+    (async () => {
+        let browser, page;
+        const joinData = activeJoins.get(joinId);
+
+        try {
+            const account = await Account.getById(account_id);
+            if (!account) throw new Error('Account not found');
+
+            broadcastLog(`🚀 AUTO JOIN: Starting for account "${account.name}" — keyword: "${keyword}"`, 'info');
+            broadcastLog(`📋 Filter: max ${max_groups} grup, prioritas: aktif + anggota terbanyak, skip joined: ${skip_joined ? 'ya' : 'tidak'}, min members: ${min_members}, di sekitar saya: ${nearby ? 'YA 📍' : 'tidak'}, grup publik: ${public_only ? 'YA 🌐' : 'tidak'}`, 'info');
+
+            // Parse cookies
+            let cookies = account.cookies_json;
+            if (typeof cookies === 'string') {
+                try { cookies = JSON.parse(cookies); } catch (e) { /* keep as-is */ }
+            }
+
+            // Launch browser with account cookies
+            const launchResult = await launchBrowserWithCookies(null, { cookiesOverride: cookies });
+            browser = launchResult.browser;
+            page = launchResult.page;
+            joinData.browser = browser;
+
+            // ============ PHASE 1: SEARCH & COLLECT GROUPS ============
+            broadcastLog(`🔍 Phase 1: Mencari grup dengan keyword "${keyword}"...`, 'info');
+
+            // Kumpulkan secukupnya saja: target + buffer untuk filter (skip joined / min members)
+            // Contoh: limit 3 → kumpulkan max 13, limit 500 → kumpulkan max 1000
+            const collectTarget = Math.max(max_groups * 2, max_groups + 10);
+
+            const searchResult = await searchGroupsFiltered(page, {
+                keyword,
+                maxResults: collectTarget,
+                // FB memuat ~10 grup per scroll; beri kelonggaran 3x + 20 agar target besar tercapai
+                maxScrolls: Math.ceil(collectTarget / 10) * 3 + 20,
+                maxStagnantScrolls: 12,
+                nearby: !!nearby,
+                publicOnly: !!public_only,
+                signal: joinData.abortController.signal,
+                onProgress: (progress) => {
+                    joinData.foundGroups = progress.found;
+                    const skippedParts = [];
+                    if (progress.skippedJoined > 0) skippedParts.push(`${progress.skippedJoined} sudah di-join`);
+                    if (progress.skippedFull > 0) skippedParts.push(`${progress.skippedFull} grup penuh`);
+                    if (skippedParts.length > 0) {
+                        broadcastLog(`🔍 Searching... ${progress.found} grup ditemukan (scroll ${progress.scrollCount}) — dilewati: ${skippedParts.join(', ')} (tidak dihitung)`, 'info');
+                    } else {
+                        broadcastLog(`🔍 Searching... ${progress.found} grup ditemukan (scroll ${progress.scrollCount})`, 'info');
+                    }
+                }
+            });
+
+            if (joinData.abortController.signal.aborted) {
+                joinData.status = 'cancelled';
+                joinData.phase = 'cancelled';
+                joinData.completedAt = new Date().toISOString();
+                broadcastLog(`⚠️ AUTO JOIN ${joinId} dibatalkan saat pencarian`, 'warning');
+                return;
+            }
+
+            let candidateGroups = searchResult.groups || [];
+            broadcastLog(`📊 Ditemukan ${candidateGroups.length} grup dari pencarian`, 'info');
+
+            // ============ PHASE 2: FILTER & SORT ============
+            broadcastLog(`🧹 Phase 2: Memfilter & mengurutkan grup...`, 'info');
+
+            // Filter: minimum members
+            if (min_members > 0) {
+                candidateGroups = candidateGroups.filter(g => (g.member_count_raw || 0) >= min_members);
+                broadcastLog(`📊 Setelah filter min ${min_members} anggota: ${candidateGroups.length} grup`, 'info');
+            }
+
+            // Filter: skip groups already joined (from database)
+            if (skip_joined) {
+                const joinedGroups = await Group.getAll({ account_id });
+                const joinedIds = new Set(joinedGroups.map(g => g.group_id));
+                const beforeCount = candidateGroups.length;
+                candidateGroups = candidateGroups.filter(g => !joinedIds.has(g.group_id));
+                broadcastLog(`📊 Skip ${beforeCount - candidateGroups.length} grup yang sudah di-join (dari database)`, 'info');
+            }
+
+            // Sort: ANGGOTA TERBANYAK DAHULU — sesuai permintaan user,
+            // join dimulai dari grup dengan anggota paling banyak.
+            candidateGroups.sort((a, b) => (b.member_count_raw || 0) - (a.member_count_raw || 0));
+            broadcastLog(`📊 Sort: anggota terbanyak dahulu`, 'info');
+
+            // Limit to max_groups
+            const targetGroups = candidateGroups.slice(0, max_groups);
+            joinData.targetGroups = targetGroups.length;
+            joinData.totalMembers = targetGroups.reduce((sum, g) => sum + (g.member_count_raw || 0), 0);
+            broadcastLog(`🎯 Target: ${targetGroups.length} grup | TOTAL ANGGOTA: ${joinData.totalMembers.toLocaleString('id-ID')}`, 'info');
+            joinData.status = 'joining';
+            joinData.phase = 'joining';
+
+            if (targetGroups.length === 0) {
+                broadcastLog(`⚠️ Tidak ada grup yang memenuhi filter. Auto-join diakhiri.`, 'warning');
+                joinData.status = 'completed';
+                joinData.completedAt = new Date().toISOString();
+                return;
+            }
+
+            broadcastLog(`🎯 Phase 3: Mulai join ${targetGroups.length} grup (delay ${delay_seconds}s antar grup)...`, 'info');
+
+            // ============ PHASE 3: JOIN GROUPS ONE BY ONE ============
+            // Anti-spam: kalau Facebook memblokir, tunggu cooldown lalu coba lagi.
+            // Cooldown 15 menit (cukup aman, tidak terlalu lama), max 3x retry.
+            const SPAM_COOLDOWN_MS = 15 * 60 * 1000;
+            const SPAM_MAX_RETRIES = 3;
+            let spamRetryCount = 0;
+            let spamStopped = false;
+
+            let i = 0;
+            while (i < targetGroups.length) {
+                if (joinData.abortController.signal.aborted) {
+                    broadcastLog(`⚠️ AUTO JOIN ${joinId} dibatalkan oleh user`, 'warning');
+                    joinData.status = 'cancelled';
+                    joinData.phase = 'cancelled';
+                    joinData.completedAt = new Date().toISOString();
+                    return;
+                }
+
+                const group = targetGroups[i];
+                const progress = `[${i + 1}/${targetGroups.length}]`;
+                joinData.currentGroup = group.group_name || group.group_id;
+
+                broadcastLog(`${progress} Klik Gabung: ${group.group_name || group.group_id} (${(group.member_count_raw || 0).toLocaleString('id-ID')} anggota)`, 'info');
+
+                try {
+                    // Join LANGSUNG dari halaman pencarian — klik tombol "Gabung" di kartu grup,
+                    // tombol berubah jadi "Lihat" = sudah tergabung. Tidak perlu buka halaman grup.
+                    const result = await joinGroupFromSearchPage(page, group.group_id, { autoAnswer: auto_answer });
+
+                    if (result.success) {
+                        if (result.alreadyJoined) {
+                            joinData.alreadyJoined++;
+                            joinData.results.alreadyJoined.push({ groupId: group.group_id, name: group.group_name });
+                            broadcastLog(`${progress} ℹ️ Sudah di-join: ${group.group_name || group.group_id}`, 'info');
+                        } else if (result.pendingApproval) {
+                            joinData.pending++;
+                            joinData.results.pending.push({ groupId: group.group_id, name: group.group_name });
+                            const answerInfo = result.answeredQuestions ? ' (pertanyaan grup & aturan otomatis diisi ✍️)' : '';
+                            broadcastLog(`${progress} ⏳ Request terkirim (pending approval): ${group.group_name || group.group_id}${answerInfo}`, 'warning');
+                        } else {
+                            joinData.joined++;
+                            joinData.results.success.push({ groupId: group.group_id, name: group.group_name });
+                            broadcastLog(`${progress} ✅ Berhasil join: ${group.group_name || group.group_id}`, 'success');
+                        }
+
+                        // Save to database
+                        try {
+                            await Group.save({
+                                facebook_account_id: account_id,
+                                group_id: group.group_id,
+                                group_name: group.group_name || `Group ${group.group_id}`,
+                                group_type: group.group_type || 'public',
+                                member_count: group.member_count_raw || 0,
+                                is_joined: true,
+                                status: 'active'
+                            });
+                        } catch (e) {
+                            console.error(`[auto-join] Failed to save group to DB: ${e.message}`);
+                        }
+
+                        i++; // lanjut ke grup berikutnya
+
+                    } else if (result.spamDetected) {
+                        spamRetryCount++;
+                        if (spamRetryCount > SPAM_MAX_RETRIES) {
+                            broadcastLog(`🛑 SPAM DETECTED ${spamRetryCount}x berturut-turut. Auto-join dihentikan demi keamanan akun.`, 'error');
+                            spamStopped = true;
+                            break;
+                        }
+
+                        const cooldownMin = Math.floor(SPAM_COOLDOWN_MS / 60000);
+                        joinData.status = 'cooldown';
+                        joinData.phase = 'cooldown';
+                        broadcastLog(`🛑 SPAM DETECTED! (${result.error || 'Facebook membatasi aktivitas'}) — menunggu ${cooldownMin} menit sebelum mencoba lagi... (retry ${spamRetryCount}/${SPAM_MAX_RETRIES})`, 'error');
+                        broadcastLog(`💡 Tips: kurangi jumlah grup & naikkan delay agar tidak terdeteksi spam`, 'warning');
+
+                        for (let t = cooldownMin; t > 0; t--) {
+                            if (joinData.abortController.signal.aborted) break;
+                            await delay(60000);
+                            if (t > 1) broadcastLog(`⏱️ Cooldown spam: ${t - 1} menit lagi...`, 'warning');
+                        }
+
+                        if (joinData.abortController.signal.aborted) {
+                            broadcastLog(`⚠️ Auto-join dibatalkan saat cooldown spam`, 'warning');
+                            joinData.status = 'cancelled';
+                            joinData.phase = 'cancelled';
+                            joinData.completedAt = new Date().toISOString();
+                            return;
+                        }
+
+                        joinData.status = 'joining';
+                        joinData.phase = 'joining';
+                        broadcastLog(`🔄 Cooldown selesai, mencoba join lagi dari grup yang tertunda...`, 'info');
+                        // Tidak increment i — coba ulang grup yang sama
+
+                    } else if (result.groupNotFound) {
+                        joinData.failed++;
+                        joinData.results.failed.push({ groupId: group.group_id, name: group.group_name, error: result.error });
+                        broadcastLog(`${progress} 🚫 SKIP (grup tidak ditemukan): ${group.group_name || group.group_id}`, 'warning');
+                        i++;
+
+                    } else if (result.groupFull) {
+                        // Grup PENUH (batas anggota Facebook) — tidak bisa di-join,
+                        // bukan error akun, jadi langsung skip tanpa retry
+                        joinData.full++;
+                        joinData.results.full.push({ groupId: group.group_id, name: group.group_name, error: result.error });
+                        broadcastLog(`${progress} 🈵 SKIP (grup penuh): ${group.group_name || group.group_id} — ${result.error}`, 'warning');
+                        i++;
+
+                    } else {
+                        joinData.failed++;
+                        joinData.results.failed.push({ groupId: group.group_id, name: group.group_name, error: result.error });
+                        broadcastLog(`${progress} ❌ Gagal join: ${group.group_name || group.group_id} — ${result.error}`, 'error');
+                        i++;
+                    }
+
+                } catch (err) {
+                    joinData.failed++;
+                    joinData.results.failed.push({ groupId: group.group_id, name: group.group_name, error: err.message });
+                    broadcastLog(`${progress} ❌ Error: ${group.group_name || group.group_id} — ${err.message}`, 'error');
+                    i++;
+                }
+
+                // Variable delay antar grup (anti-detection)
+                if (i < targetGroups.length && !joinData.abortController.signal.aborted) {
+                    const baseDelay = delay_seconds * 1000;
+                    const randomVariation = use_variable_delay ? Math.floor(Math.random() * 30000) : 0;
+                    const totalDelay = baseDelay + randomVariation;
+
+                    broadcastLog(`⏳ Waiting ${Math.floor(totalDelay / 1000)}s (base: ${delay_seconds}s + random: ${Math.floor(randomVariation / 1000)}s)...`, 'warning');
+                    await delay(totalDelay);
+                }
+            }
+
+            // ============ FINAL REPORT ============
+            if (spamStopped) {
+                joinData.status = 'failed';
+                joinData.phase = 'failed';
+                joinData.error = 'Dihentikan: Facebook mendeteksi spam setelah beberapa kali cooldown';
+                broadcastLog(`🛑 AUTO JOIN DIHENTIKAN (spam) — hasil sementara: Join ${joinData.joined}, Pending ${joinData.pending}, Gagal ${joinData.failed}`, 'error');
+            } else {
+                joinData.status = 'completed';
+                joinData.phase = 'completed';
+            }
+            joinData.completedAt = new Date().toISOString();
+            joinData.currentGroup = null;
+
+            broadcastLog(`📊 AUTO JOIN COMPLETE:`, 'info');
+            broadcastLog(`   ✅ Berhasil join: ${joinData.joined}`, 'success');
+            broadcastLog(`   ⏳ Pending approval: ${joinData.pending}`, 'warning');
+            broadcastLog(`   ℹ️ Sudah di-join: ${joinData.alreadyJoined}`, 'info');
+            broadcastLog(`   🈵 Grup penuh (skip): ${joinData.full}`, 'warning');
+            broadcastLog(`   ❌ Gagal: ${joinData.failed}`, 'error');
+            broadcastLog(`   👥 TOTAL ANGGOTA (target grup): ${joinData.totalMembers.toLocaleString('id-ID')}`, 'info');
+
+        } catch (error) {
+            broadcastLog(`❌ AUTO JOIN fatal error: ${error.message}`, 'error');
+            joinData.status = 'failed';
+            joinData.phase = 'failed';
+            joinData.error = error.message;
+            joinData.completedAt = new Date().toISOString();
+        } finally {
+            if (browser) {
+                try { await browser.close(); } catch (e) { /* ignore */ }
+            }
+            isAutoJoining = false;
+        }
+    })();
+});
+
+// GET /api/auto-join-groups/:joinId - Get auto-join status/results
+app.get('/api/auto-join-groups/:joinId', async (req, res) => {
+    try {
+        const { joinId } = req.params;
+        const joinData = activeJoins.get(joinId);
+
+        if (!joinData) {
+            return res.status(404).json({ success: false, error: 'Auto-join session not found' });
+        }
+
+        res.json({
+            success: true,
+            status: joinData.status,
+            phase: joinData.phase,
+            keyword: joinData.keyword,
+            foundGroups: joinData.foundGroups,
+            targetGroups: joinData.targetGroups,
+            joined: joinData.joined,
+            alreadyJoined: joinData.alreadyJoined,
+            pending: joinData.pending,
+            failed: joinData.failed,
+            full: joinData.full || 0,
+            totalMembers: joinData.totalMembers || 0,
+            currentGroup: joinData.currentGroup,
+            results: joinData.results,
+            startedAt: joinData.startedAt,
+            completedAt: joinData.completedAt,
+            error: joinData.error || null
+        });
+
+    } catch (error) {
+        console.error('❌ Error getting auto-join status:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /api/auto-join-groups/:joinId/cancel - Cancel an ongoing auto-join
+app.post('/api/auto-join-groups/:joinId/cancel', async (req, res) => {
+    try {
+        const { joinId } = req.params;
+        const joinData = activeJoins.get(joinId);
+
+        if (!joinData) {
+            return res.status(404).json({ success: false, error: 'Auto-join session not found' });
+        }
+
+        if (joinData.status !== 'searching' && joinData.status !== 'joining' && joinData.status !== 'cooldown') {
+            return res.status(400).json({ success: false, error: `Auto-join is already ${joinData.status}` });
+        }
+
+        // Signal cancellation
+        joinData.abortController.abort();
+        joinData.status = 'cancelled';
+        joinData.phase = 'cancelled';
+        joinData.completedAt = new Date().toISOString();
+
+        // Close browser if open
+        if (joinData.browser) {
+            try {
+                await joinData.browser.close();
+            } catch (e) {
+                console.error('Error closing browser during cancellation:', e);
+            }
+        }
+
+        broadcastLog(`⚠️ AUTO JOIN ${joinId} cancelled by user`, 'warning');
+
+        res.json({ success: true, message: 'Auto-join cancelled' });
+
+    } catch (error) {
+        console.error('❌ Error cancelling auto-join:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -709,6 +1278,24 @@ app.get('/api/groups', async (req, res) => {
     }
 });
 
+// GET /api/groups/posted-ids?account_id=X — group_id yang sudah pernah dipost (dari post_history)
+app.get('/api/groups/posted-ids', async (req, res) => {
+    try {
+        const { account_id } = req.query;
+        if (!account_id) return res.status(400).json({ success: false, error: 'account_id required' });
+        // Hanya status sukses murni. 'group_disabled' BUKAN sukses (grup tak bisa diposting),
+        // jadi jangan dimasukkan ke daftar "sudah dipost".
+        const rows = await query(
+            `SELECT DISTINCT CAST(group_id AS TEXT) as group_id FROM post_history WHERE CAST(facebook_account_id AS TEXT) = CAST(? AS TEXT) AND status IN ('success','pending_approval')`,
+            [account_id]
+        );
+        const ids = rows.map(r => r.group_id);
+        res.json({ success: true, posted_ids: ids });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.get('/api/groups/:accountId/stats', async (req, res) => {
     try {
         const stats = await Group.getStats(req.params.accountId);
@@ -731,6 +1318,42 @@ app.delete('/api/groups/:id', async (req, res) => {
     try {
         const deleted = await Group.delete(req.params.id);
         res.json({ success: deleted });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============ GROUP BLACKLIST API ============
+
+// Daftar grup blacklist (yang tidak punya post box / bermasalah permanen)
+app.get('/api/groups/blacklist', async (req, res) => {
+    try {
+        const accountId = req.query.account_id ?? null;
+        const rows = await GroupBlacklist.getAll(
+            accountId ? { account_id: accountId } : {}
+        );
+        res.json({ success: true, blacklist: rows, total: rows.length });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Hapus grup dari blacklist (agar bisa discan/diposting lagi)
+app.delete('/api/groups/blacklist/:groupId', async (req, res) => {
+    try {
+        const accountId = req.query.account_id ?? null;
+        const removed = await GroupBlacklist.remove(req.params.groupId, accountId);
+        res.json({ success: removed });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Kosongkan seluruh blacklist
+app.delete('/api/groups/blacklist', async (req, res) => {
+    try {
+        const removed = await GroupBlacklist.removeAll();
+        res.json({ success: removed });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -943,6 +1566,15 @@ app.post('/api/groups/save', async (req, res) => {
         let saved = 0;
         let duplicates = 0;
         let errors = 0;
+        let blacklisted = 0;
+
+        // Ambil daftar blacklist sekali saja (bukan query per grup)
+        let blacklistedIds = new Set();
+        try {
+            blacklistedIds = new Set(await GroupBlacklist.getGroupIds(accountId));
+        } catch (e) {
+            console.error('[groups/save] Gagal memuat blacklist:', e.message);
+        }
 
         for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
@@ -967,19 +1599,21 @@ app.post('/api/groups/save', async (req, res) => {
                     continue;
                 }
 
+                // Grup blacklist tidak boleh masuk lagi ke Manajemen Grup
+                if (blacklistedIds.has(String(groupData.group_id))) {
+                    blacklisted++;
+                    continue;
+                }
+
                 console.log(`🔍 [DEBUG] Group ${i+1}/${groups.length} - groupData:`, JSON.stringify(groupData, null, 2));
 
-                const result = await Group.create(groupData);
-                console.log(`🔍 [DEBUG] Group.create() returned:`, result, typeof result);
+                const result = await Group.save(groupData);
+                console.log(`🔍 [DEBUG] Group.save() returned:`, result, typeof result);
 
-                // FIX: Group.create() returns:
-                // - For new inserts: insertId (truthy number)
-                // - For updates: affectedRows (can be 0 if no data changed)
-                // Both are valid "success" cases - the operation completed without throwing
                 if (result !== null && result !== undefined) {
                     saved++;
                 } else {
-                    console.warn(`⚠️ [DEBUG] Group.create() returned unexpected falsy value for group: ${groupData.group_name}`);
+                    console.warn(`⚠️ [DEBUG] Group.save() returned unexpected falsy value for group: ${groupData.group_name}`);
                     errors++;
                 }
             } catch (e) {
@@ -992,11 +1626,11 @@ app.post('/api/groups/save', async (req, res) => {
             }
         }
 
-        console.log(`🔍 [DEBUG] Save summary: saved=${saved}, duplicates=${duplicates}, errors=${errors}, total=${groups.length}`);
+        console.log(`🔍 [DEBUG] Save summary: saved=${saved}, duplicates=${duplicates}, errors=${errors}, blacklisted=${blacklisted}, total=${groups.length}`);
 
-        broadcastLog(`✅ Saved ${saved} groups, ${duplicates} duplicates skipped, ${errors} errors`, 'success');
+        broadcastLog(`✅ Saved ${saved} groups, ${duplicates} duplicates skipped, ${errors} errors, ${blacklisted} blacklisted skipped`, 'success');
 
-        res.json({ success: true, saved, duplicates, errors });
+        res.json({ success: true, saved, duplicates, errors, blacklisted });
 
     } catch (error) {
         console.error('❌ Error saving groups:', error);
@@ -1020,6 +1654,9 @@ app.post('/api/post-now', async (req, res) => {
     res.json({ success: true, message: 'Posting started', totalGroups: target_groups.length });
 
     isPosting = true;
+    resetPostControl();
+    postControl.active = true;
+    resetActivePostJob(target_groups.length);
 
     // Run in background
     (async () => {
@@ -1061,8 +1698,30 @@ app.post('/api/post-now', async (req, res) => {
             browser = launchResult.browser;
             page = launchResult.page;
 
-            // Post to each group
-            for (let i = 0; i < target_groups.length; i++) {
+            // Auto-pause 1 jam saat terdeteksi SPAM atau
+            // "Network request timed out. ComposerStoryCreateMutation(...)".
+            // Setelah 1 jam, progres dilanjutkan OTOMATIS dari grup yang sama.
+            // Jika terdeteksi lagi → auto-pause 1 jam lagi, dan begitu seterusnya
+            // TANPA batas retry.
+            const AUTO_PAUSE_MIN = Math.floor(AUTO_PAUSE_MS / 60000);
+            let autoPauseCount = 0; // hanya untuk penomoran di log
+
+            // Post to each group — support resume after spam cooldown
+            let i = 0;
+            let sessionAborted = false;
+            while (i < target_groups.length) {
+                // Cek permintaan STOP dari pengguna
+                if (postControl.stopped) {
+                    broadcastLog('🛑 Posting dihentikan oleh pengguna.', 'warning');
+                    break;
+                }
+
+                // Tunggu selama di-PAUSE
+                if (await waitWhilePaused()) {
+                    broadcastLog('🛑 Posting dihentikan oleh pengguna.', 'warning');
+                    break;
+                }
+
                 const groupId = target_groups[i];
                 const progress = `[${i + 1}/${target_groups.length}]`;
 
@@ -1076,76 +1735,275 @@ app.post('/api/post-now', async (req, res) => {
                     });
 
                     // Log to post history
-                    await PostHistory.create({
-                        facebook_account_id: account_id,
-                        group_id: groupId,
-                        post_content: content,
-                        image_paths: image_paths || [],
-                        status: result.success ? (result.pendingApproval ? 'pending_approval' : 'success') : 'failed',
-                        error_message: result.error || null,
-                        posted_at: new Date(),
-                        approval_status: result.pendingApproval ? 'pending' : 'auto_posted'
-                    });
+                    // Catatan: SEMUA hasil (sukses / gagal / grup nonaktif / sesi expired)
+                    // HARUS disimpan ke history agar tidak ada kejadian "hilang" diam-diam.
+                    let historyStatus = 'failed';
+                    if (result.success) historyStatus = result.pendingApproval ? 'pending_approval' : 'success';
+                    else if (result.groupDisabled) historyStatus = 'group_disabled';
+                    else if (result.sessionInvalid) historyStatus = 'session_invalid';
+
+                    // Jangan catat history untuk SPAM / network timeout: grup ini akan
+                    // dicoba ulang otomatis setelah auto-pause, jadi bukan kegagalan final.
+                    const willRetryAfterPause = !result.success &&
+                        (result.spamDetected || result.networkTimeout);
+                    if (!willRetryAfterPause) {
+                        try {
+                            await PostHistory.create({
+                                facebook_account_id: account_id,
+                                group_id: groupId,
+                                post_content: content,
+                                image_paths: image_paths || [],
+                                status: historyStatus,
+                                error_message: result.error || null,
+                                posted_at: new Date(),
+                                approval_status: result.pendingApproval ? 'pending' : 'auto_posted'
+                            });
+                        } catch (historyErr) {
+                            broadcastLog(`⚠️ Gagal menyimpan history ${groupId}: ${historyErr.message}`, 'warning');
+                        }
+                    }
 
                     if (result.success) {
                         if (result.pendingApproval) {
                             results.pending.push({ groupId, attempts: result.attempts });
+                            activePostJob.pending = results.pending.length;
+                            activePostJob.current = results.success.length + results.pending.length + results.failed.length;
                             broadcastLog(`${progress} ⏳ Pending approval: ${groupId}`, 'warning');
                         } else {
                             results.success.push({ groupId, attempts: result.attempts });
+                            activePostJob.success = results.success.length;
+                            activePostJob.current = results.success.length + results.pending.length + results.failed.length;
                             broadcastLog(`${progress} ✅ Success: ${groupId}`, 'success');
                         }
-                    } else if (result.spamDetected) {
-                        results.spamDetected = true;
-                        broadcastLog(`🛑 SPAM DETECTED! Stopping all posting.`, 'error');
+                        i++; // lanjut ke grup berikutnya
+                    } else if (result.sessionInvalid) {
+                        // Sesi login/cookies habis — hentikan SEMUA sisa grup, tidak ada gunanya lanjut.
+                        // Keluar dari while agar tidak menulis history gagal untuk grup yang tidak diproses.
+                        results.failed.push({ groupId, error: result.error, sessionInvalid: true });
+                        activePostJob.failed = results.failed.length;
+                        activePostJob.current = results.success.length + results.pending.length + results.failed.length;
+                        broadcastLog(`🔐 SESI LOGIN EXPIRED pada grup ${groupId}. Posting dihentikan.`, 'error');
+                        broadcastLog(`👉 Perbarui cookies akun (halaman Akun → Update Cookies) lalu coba lagi.`, 'error');
+                        sessionAborted = true;
                         break;
+                    } else if (result.groupDisabled) {
+                        // Grup dinonaktifkan / chat ditutup — skip tanpa delay
+                        results.failed.push({ groupId, error: result.error });
+                        activePostJob.failed = results.failed.length;
+                        activePostJob.current = results.success.length + results.pending.length + results.failed.length;
+                        broadcastLog(`${progress} 🚫 SKIP (grup nonaktif): ${groupId} — ${result.error}`, 'warning');
+                        i++;
+                        continue; // langsung ke grup berikutnya tanpa delay
+                    } else if (result.blacklist || result.postBoxNotFound) {
+                        // Grup tidak punya post box di halaman utama → BLACKLIST.
+                        // Hapus dari daftar Manajemen Grup agar tidak dipakai lagi.
+                        results.failed.push({ groupId, error: result.error, blacklisted: true });
+                        activePostJob.failed = results.failed.length;
+                        activePostJob.current = results.success.length + results.pending.length + results.failed.length;
+                        broadcastLog(`${progress} 🚫 BLACKLIST: ${groupId} — ${result.error || 'Post box tidak ditemukan di halaman utama'}`, 'warning');
+                        await blacklistGroup(groupId, account_id, null, result.error, broadcastLog);
+                        i++;
+                        continue; // langsung ke grup berikutnya tanpa delay
+                    } else if (result.spamDetected || result.networkTimeout) {
+                        // ===== AUTO-PAUSE 1 JAM (SPAM / NETWORK TIMEOUT) =====
+                        // Tidak ada batas retry: setelah 1 jam progres lanjut otomatis,
+                        // jika terdeteksi lagi maka auto-pause 1 jam lagi, berulang terus.
+                        autoPauseCount++;
+                        const isSpam = !!result.spamDetected;
+                        const reason = isSpam
+                            ? 'SPAM / akun dibatasi Facebook'
+                            : 'Network request timed out (ComposerStoryCreateMutation)';
+                        const until = new Date(Date.now() + AUTO_PAUSE_MS);
+
+                        postControl.autoPaused = true;
+                        postControl.autoPauseUntil = until.toISOString();
+                        postControl.autoPauseReason = reason;
+
+                        broadcastLog(`⏸️ ${reason} pada grup ${groupId}.`, 'error');
+                        broadcastLog(`⏱️ AUTO-PAUSE ${AUTO_PAUSE_MIN} menit (sampai ${until.toLocaleTimeString()}) — progres lanjut otomatis setelahnya. (auto-pause #${autoPauseCount})`, 'warning');
+
+                        // Countdown per menit; tetap bisa di-STOP pengguna kapan saja.
+                        for (let t = AUTO_PAUSE_MIN; t > 0; t--) {
+                            if (await interruptibleDelay(60000)) break;
+                            if (t > 1) {
+                                broadcastLog(`⏱️ Auto-pause: ${t - 1} menit lagi... (auto-pause #${autoPauseCount})`, 'warning');
+                            }
+                        }
+
+                        postControl.autoPaused = false;
+                        postControl.autoPauseUntil = null;
+                        postControl.autoPauseReason = null;
+
+                        if (postControl.stopped) {
+                            broadcastLog('🛑 Posting dihentikan oleh pengguna saat auto-pause.', 'warning');
+                            break;
+                        }
+
+                        broadcastLog(`🔄 Auto-pause selesai. Melanjutkan progres dari grup ${groupId}...`, 'info');
+                        // Tidak increment i — coba ulang grup yang sama
                     } else {
                         results.failed.push({ groupId, error: result.error });
+                        activePostJob.failed = results.failed.length;
+                        activePostJob.current = results.success.length + results.pending.length + results.failed.length;
                         broadcastLog(`${progress} ❌ Failed: ${groupId} - ${result.error}`, 'error');
+                        i++;
                     }
 
                 } catch (err) {
-                    results.failed.push({ groupId, error: err.message });
+                    const isBlacklistErr = /post box tidak ditemukan/i.test(err.message || '');
+                    results.failed.push({ groupId, error: err.message, blacklisted: isBlacklistErr });
+                    activePostJob.failed = results.failed.length;
+                    activePostJob.current = results.success.length + results.pending.length + results.failed.length;
                     broadcastLog(`${progress} ❌ Error: ${groupId} - ${err.message}`, 'error');
 
-                    // Log error to history
-                    await PostHistory.create({
-                        facebook_account_id: account_id,
-                        group_id: groupId,
-                        post_content: content,
-                        image_paths: image_paths || [],
-                        status: 'failed',
-                        error_message: err.message,
-                        posted_at: new Date()
-                    });
+                    // "Post box tidak ditemukan" → grup blacklist, hapus dari Manajemen Grup.
+                    if (isBlacklistErr) {
+                        await blacklistGroup(groupId, account_id, null, err.message, broadcastLog);
+                    }
+
+                    // Selalu simpan history walau terjadi exception, agar tidak ada
+                    // kejadian yang hilang tanpa jejak (mis. saat sesi expired).
+                    try {
+                        await PostHistory.create({
+                            facebook_account_id: account_id,
+                            group_id: groupId,
+                            post_content: content,
+                            image_paths: image_paths || [],
+                            status: /sesi|cookies|login/i.test(err.message) ? 'session_invalid' : 'failed',
+                            error_message: err.message,
+                            posted_at: new Date()
+                        });
+                    } catch (historyErr) {
+                        broadcastLog(`⚠️ Gagal menyimpan history ${groupId}: ${historyErr.message}`, 'warning');
+                    }
+                    i++;
                 }
 
-                // Variable delay between posts (anti-detection)
-                if (i < target_groups.length - 1 && !results.spamDetected) {
+                // Variable delay antar grup (anti-detection), skip jika spam cooldown baru selesai
+                if (i < target_groups.length) {
                     const baseDelay = delay_seconds * 1000;
                     const randomVariation = use_variable_delay ? Math.floor(Math.random() * 30000) : 0;
                     const totalDelay = baseDelay + randomVariation;
 
                     broadcastLog(`⏳ Waiting ${Math.floor(totalDelay/1000)}s (base: ${delay_seconds}s + random: ${Math.floor(randomVariation/1000)}s)...`, 'warning');
-                    await delay(totalDelay);
+                    if (await interruptibleDelay(totalDelay)) {
+                        broadcastLog('🛑 Posting dihentikan oleh pengguna saat jeda antar grup.', 'warning');
+                        break;
+                    }
                 }
             }
 
             await browser.close();
 
             // Final report
-            broadcastLog(`📊 POSTING COMPLETE:`, 'info');
+            if (sessionAborted) {
+                broadcastLog(`📊 POSTING DIHENTIKAN — sesi login/cookies expired atau logout.`, 'error');
+                broadcastLog(`👉 Perbarui cookies akun lalu jalankan lagi. Grup yang diproses tercatat di Riwayat.`, 'error');
+            } else if (postControl.stopped) {
+                broadcastLog(`📊 POSTING DIHENTIKAN oleh pengguna:`, 'warning');
+            } else {
+                broadcastLog(`📊 POSTING COMPLETE:`, 'info');
+            }
             broadcastLog(`   ✅ Success: ${results.success.length}`, 'success');
             broadcastLog(`   ⏳ Pending: ${results.pending.length}`, 'warning');
             broadcastLog(`   ❌ Failed: ${results.failed.length}`, 'error');
+            if (autoPauseCount > 0) {
+                broadcastLog(`   ⏸️ Auto-pause (spam/network timeout): ${autoPauseCount}x @ 1 jam`, 'warning');
+            }
+            const remaining = target_groups.length - results.success.length - results.pending.length - results.failed.length;
+            if (remaining > 0) {
+                broadcastLog(`   ⏭️ Tidak diproses: ${remaining} grup`, 'warning');
+            }
 
         } catch (error) {
             broadcastLog(`❌ Fatal error: ${error.message}`, 'error');
             if (browser) await browser.close();
         } finally {
             isPosting = false;
+            resetPostControl();
+            // Tandai job selesai agar halaman yang di-refresh tahu posting sudah berakhir
+            activePostJob.active = false;
+            activePostJob.finished = true;
+            activePostJob.finishedAt = new Date().toISOString();
+            activePostJob.current = activePostJob.success + activePostJob.pending + activePostJob.failed;
         }
     })();
+});
+
+// Snapshot progress + log job posting (dipakai untuk memulihkan tampilan setelah refresh)
+app.get('/api/post-now/current', (req, res) => {
+    res.json({
+        success: true,
+        active: isPosting,
+        job: {
+            active: activePostJob.active,
+            finished: activePostJob.finished,
+            startedAt: activePostJob.startedAt,
+            finishedAt: activePostJob.finishedAt,
+            total: activePostJob.total,
+            current: activePostJob.current,
+            success: activePostJob.success,
+            pending: activePostJob.pending,
+            failed: activePostJob.failed,
+            logs: activePostJob.logs,
+            summary: activePostJob.summary
+        },
+        paused: postControl.paused,
+        stopped: postControl.stopped,
+        autoPaused: postControl.autoPaused,
+        autoPauseUntil: postControl.autoPauseUntil,
+        autoPauseReason: postControl.autoPauseReason
+    });
+});
+
+// ============ POST CONTROL (PAUSE / RESUME / STOP) ============
+
+app.post('/api/post-now/pause', (req, res) => {
+    if (!isPosting) {
+        return res.status(400).json({ success: false, error: 'Tidak ada posting yang sedang berjalan' });
+    }
+    postControl.paused = true;
+    broadcastLog('⏸️ Posting dijeda oleh pengguna. Klik Resume untuk melanjutkan.', 'warning');
+    res.json({ success: true, paused: true, stopped: postControl.stopped });
+});
+
+app.post('/api/post-now/resume', (req, res) => {
+    if (!isPosting) {
+        return res.status(400).json({ success: false, error: 'Tidak ada posting yang sedang berjalan' });
+    }
+    postControl.paused = false;
+    if (postControl.resumeResolve) {
+        postControl.resumeResolve();
+        postControl.resumeResolve = null;
+    }
+    broadcastLog('▶️ Posting dilanjutkan oleh pengguna.', 'info');
+    res.json({ success: true, paused: false, stopped: postControl.stopped });
+});
+
+app.post('/api/post-now/stop', (req, res) => {
+    if (!isPosting) {
+        return res.status(400).json({ success: false, error: 'Tidak ada posting yang sedang berjalan' });
+    }
+    postControl.stopped = true;
+    postControl.paused = false; // lepaskan pause agar loop bisa keluar
+    if (postControl.resumeResolve) {
+        postControl.resumeResolve();
+        postControl.resumeResolve = null;
+    }
+    broadcastLog('🛑 Permintaan STOP diterima. Menghentikan posting...', 'warning');
+    res.json({ success: true, paused: false, stopped: true });
+});
+
+app.get('/api/post-now/status', (req, res) => {
+    res.json({
+        success: true,
+        isPosting,
+        paused: postControl.paused,
+        stopped: postControl.stopped,
+        autoPaused: postControl.autoPaused,
+        autoPauseUntil: postControl.autoPauseUntil,
+        autoPauseReason: postControl.autoPauseReason
+    });
 });
 
 // ============ DASHBOARD STATS ============

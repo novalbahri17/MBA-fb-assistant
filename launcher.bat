@@ -5,8 +5,8 @@ echo ==========================================
 echo.
 echo Memulai server...
 echo.
-cd /d "%~dp0\web-dashboard"
-start "FB Auto Poster Server" cmd /k "node server.js"
+cd /d "%~dp0"
+start "FB Auto Poster Server" cmd /k "node server-v2.js"
 echo.
 echo Tunggu 3 detik...
 timeout /t 3 /nobreak >nul

@@ -84,6 +84,35 @@ function initializeDatabase() {
             database.exec(`ALTER TABLE post_templates ADD COLUMN use_variable_delay INTEGER DEFAULT 1`);
         } catch (e) { /* column already exists */ }
 
+        // Add missing columns to post_history table (migration)
+        // Penting: PostHistory.create() menulis ke kolom-kolom ini.
+        // Tanpa migrasi ini, penyimpanan riwayat bisa GAGAL di database lama
+        // (akibatnya riwayat posting "hilang" diam-diam).
+        try {
+            database.exec(`ALTER TABLE post_history ADD COLUMN post_content TEXT`);
+        } catch (e) { /* column already exists */ }
+        try {
+            database.exec(`ALTER TABLE post_history ADD COLUMN image_paths TEXT`);
+        } catch (e) { /* column already exists */ }
+        try {
+            database.exec(`ALTER TABLE post_history ADD COLUMN approval_status TEXT`);
+        } catch (e) { /* column already exists */ }
+
+        // Tabel blacklist grup: grup yang tidak punya post box / bermasalah permanen.
+        // Grup blacklist dihapus dari fb_groups (Manajemen Grup) dan tidak akan
+        // dimasukkan lagi saat scan berikutnya.
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS group_blacklist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                facebook_account_id INTEGER,
+                group_id TEXT NOT NULL,
+                group_name TEXT,
+                reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(facebook_account_id, group_id)
+            )
+        `);
+
         console.log('✅ Database tables initialized');
         return true;
     } catch (error) {

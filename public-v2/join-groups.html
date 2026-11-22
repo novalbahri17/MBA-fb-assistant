@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Join Grup - FB Auto Poster Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .log-entry { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .progress-bar { transition: width 0.3s ease; }
+        .sidebar-section { cursor: pointer; user-select: none; }
+        .sidebar-section:hover { background-color: #374151; }
+        .sidebar-section .toggle-icon { transition: transform 0.2s; }
+        .sidebar-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .sidebar-section.collapsed + .sidebar-items { display: none; }
+        .sidebar-items a { padding-left: 1.5rem; }
+        /* Toggle switch ala Facebook (biru #1877f2) */
+        .fb-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .fb-switch input { opacity: 0; width: 0; height: 0; }
+        .fb-switch-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #d1d5db; border-radius: 9999px; transition: background-color .2s; }
+        .fb-switch-slider:before { content: ""; position: absolute; height: 20px; width: 20px; left: 2px; top: 2px; background: #fff; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .2s; }
+        .fb-switch input:checked + .fb-switch-slider { background-color: #1877f2; }
+        .fb-switch input:checked + .fb-switch-slider:before { transform: translateX(20px); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 bg-gray-900 text-white fixed">
+            <div class="p-6">
+                <h1 class="text-xl font-bold"><i class="fab fa-facebook text-blue-500 mr-2"></i>FB Auto Poster</h1>
+                <p class="text-xs text-gray-400 mt-1">Pro v2.0</p>
+            </div>
+            <nav class="mt-6 space-y-1">
+                <!-- Overview -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Overview</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="index.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-home w-6"></i> Dashboard
+                    </a>
+                </div>
+
+                <!-- Data -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Data</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="accounts.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-cog w-6"></i> Akun
+                    </a>
+                    <a href="groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-users w-6"></i> Grup
+                    </a>
+                </div>
+
+                <!-- Posting -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Posting</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="post.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-paper-plane w-6"></i> Post Sekarang
+                    </a>
+                    <a href="scheduled.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-clock w-6"></i> Jadwal
+                    </a>
+                    <a href="templates.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-copy w-6"></i> Template
+                    </a>
+                </div>
+
+                <!-- Auto Join -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Auto Join</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="join-groups.html" class="block py-2 px-6 bg-green-600">
+                        <i class="fas fa-user-plus w-6"></i> Auto Join Grup
+                    </a>
+                </div>
+
+                <!-- Monitor -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Monitor</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="history.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-history w-6"></i> Riwayat
+                    </a>
+                </div>
+
+                <!-- System -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>System</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="settings.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-cog w-6"></i> Pengaturan
+                    </a>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Banner status koneksi -->
+            <div id="connBanner" class="hidden mb-4 bg-red-50 border border-red-300 rounded-lg p-4">
+                <p class="text-red-700 font-semibold"><i class="fas fa-exclamation-triangle mr-2"></i>Tidak terhubung ke server!</p>
+                <p class="text-red-600 text-sm mt-1" id="connBannerMsg">
+                    Halaman ini harus dibuka lewat <b>http://localhost:8080</b>, bukan langsung dari file.
+                    Jalankan <b>START-SERVER.bat</b> lalu buka <a href="http://localhost:8080/join-groups.html" class="underline font-semibold">http://localhost:8080/join-groups.html</a>
+                </p>
+            </div>
+
+            <!-- Header -->
+            <div class="mb-8 flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-user-plus text-green-600 mr-2"></i>Auto Join Grup</h2>
+                    <p class="text-gray-600">Cari grup berdasarkan keyword, filter, lalu otomatis join sesuai jumlah yang ditentukan</p>
+                </div>
+                <span id="connStatus" class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-200 text-gray-600">
+                    <i class="fas fa-circle mr-1"></i>Mengecek server...
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Filter Form -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4"><i class="fas fa-sliders-h text-green-600 mr-2"></i>Filter & Pengaturan</h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Pilih Akun *</label>
+                            <select id="accountSelect" class="w-full border rounded-lg px-3 py-2">
+                                <option value="">Pilih akun...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Keyword Pencarian *</label>
+                            <input type="text" id="keyword" class="w-full border rounded-lg px-3 py-2"
+                                   placeholder="Contoh: rumah dijual, jualan online, bisnis...">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Jumlah Grup (limit)</label>
+                                <input type="number" id="maxGroups" class="w-full border rounded-lg px-3 py-2" value="100" min="1" max="1000">
+                                <p class="text-xs text-gray-500 mt-1">Mau 100 grup? Isi 100, otomatis join 100 grup.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Prioritas (otomatis)</label>
+                                <div class="w-full bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800 font-medium">
+                                    <i class="fas fa-users mr-1"></i>Anggota Terbanyak Dahulu
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Join dimulai dari grup dengan anggota paling banyak</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Min. Anggota (filter)</label>
+                                <input type="number" id="minMembers" class="w-full border rounded-lg px-3 py-2" value="0" min="0" step="100">
+                                <p class="text-xs text-gray-500 mt-1">0 = tanpa filter</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Delay Antar Join (detik)</label>
+                                <input type="number" id="delaySeconds" class="w-full border rounded-lg px-3 py-2" value="60" min="15">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">
+                                <i class="fas fa-magic text-purple-600 mr-1"></i>Jawaban Otomatis Pertanyaan Masuk (Grup Private)
+                            </label>
+                            <input type="text" id="autoAnswer" class="w-full border rounded-lg px-3 py-2 text-sm"
+                                   value="Setuju dengan semua aturan grup dan ingin bergabung untuk berdiskusi."
+                                   placeholder="Jawaban otomatis saat grup meminta alasan/aturan...">
+                            <p class="text-xs text-gray-500 mt-1">Otomatis centang aturan grup, isi pertanyaan, dan pilih opsi ya/setuju</p>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <span class="text-sm flex items-center">
+                                    <i class="fas fa-map-marker-alt text-blue-600 mr-2"></i>Di sekitar saya (grup lokal)
+                                </span>
+                                <span class="fb-switch">
+                                    <input type="checkbox" id="nearbyFilter">
+                                    <span class="fb-switch-slider"></span>
+                                </span>
+                            </label>
+                            <p class="text-xs text-gray-500 -mt-1 ml-6">Sama seperti filter Facebook — hasil dibatasi grup di sekitarmu</p>
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <span class="text-sm flex items-center">
+                                    <i class="fas fa-globe text-green-600 mr-2"></i>Grup publik saja
+                                </span>
+                                <span class="fb-switch">
+                                    <input type="checkbox" id="publicOnlyFilter">
+                                    <span class="fb-switch-slider"></span>
+                                </span>
+                            </label>
+                            <p class="text-xs text-gray-500 -mt-1 ml-6">Sama seperti filter Facebook — hanya grup publik, private dilewati</p>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="skipJoined" class="mr-2" checked>
+                                <span class="text-sm">Skip grup yang sudah di-join (belum dimasukkan)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="useVariableDelay" class="mr-2" checked>
+                                <span class="text-sm">Variable Delay (Anti-Detection)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info / Preview -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4"><i class="fas fa-info-circle text-blue-600 mr-2"></i>Cara Kerja</h3>
+                    <ol class="list-decimal list-inside space-y-3 text-sm text-gray-700">
+                        <li><span class="font-semibold">Pencarian</span> — Sistem membuka Facebook dengan akun terpilih dan mencari grup dengan keyword yang Anda masukkan.</li>
+                        <li><span class="font-semibold">Filter</span> — Grup yang sudah dimasuki (tombolnya sudah jadi <strong>Lihat</strong>) dan grup <strong>penuh</strong> <strong>tidak dihitung</strong> sebagai grup ditemukan. Grup di bawah minimal anggota juga dilewati.</li>
+                        <li><span class="font-semibold">Prioritas</span> — Join dimulai dari grup dengan <em>anggota terbanyak</em> terlebih dahulu.</li>
+                        <li><span class="font-semibold">Auto Join</span> — Sistem langsung klik tombol <strong>Gabung</strong> di hasil pencarian (tanpa membuka grup satu per satu). Tombol berubah jadi <strong>Lihat</strong> = sudah tergabung. Sesuai limit: misal 100 grup = 100 grup di-join, dengan delay antar grup agar aman.</li>
+                        <li><span class="font-semibold">Simpan</span> — Grup yang berhasil di-join otomatis tersimpan di database (menu Grup).</li>
+                    </ol>
+
+                    <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p class="text-xs text-yellow-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            <strong>Perhatian:</strong> Join terlalu banyak grup dalam waktu singkat berisiko memicu deteksi spam Facebook.
+                            Disarankan: max 20-50 grup/hari per akun, delay 60-120 detik.
+                        </p>
+                    </div>
+
+                    <div class="mt-4 bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-600">
+                            <i class="fas fa-bolt mr-1"></i>
+                            Jika grup bersifat <em>private/closed</em>, sistem akan mengirim <strong>request join</strong> (pending approval) — dihitung sebagai pending, bukan gagal.
+                        </p>
+                        <p class="text-xs text-gray-600 mt-2">
+                            <i class="fas fa-users-slash mr-1"></i>
+                            Jika grup <strong>penuh</strong> (mencapai batas anggota Facebook), sistem otomatis <strong>skip</strong> dan lanjut ke grup berikutnya — dihitung terpisah sebagai "Grup Penuh", bukan gagal.
+                        </p>
+                    </div>
+
+                    <div class="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p class="text-xs text-red-800">
+                            <i class="fas fa-shield-alt mr-1"></i>
+                            <strong>Proteksi Spam:</strong> Jika Facebook mendeteksi aktivitas mencurigakan ("sementara diblokir", "aktivitas tidak biasa", dll),
+                            sistem otomatis <strong>jeda 15 menit</strong> (cooldown) lalu coba lagi — maksimal 3x.
+                            Jika masih terblokir, auto-join <strong>dihentikan otomatis</strong> demi keamanan akun.
+                            Grup yang sudah berhasil di-join tetap tersimpan. Anda juga bisa membatalkan manual kapan saja (tombol Batalkan).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 flex gap-3">
+                <button onclick="startAutoJoin()" id="btnJoin" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold">
+                    <i class="fas fa-user-plus mr-2"></i>Mulai Auto Join
+                </button>
+                <button onclick="cancelAutoJoin()" id="btnCancel" class="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold hidden">
+                    <i class="fas fa-stop mr-2"></i>Batalkan
+                </button>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="mt-6 bg-white rounded-lg shadow p-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Progress Auto Join</h3>
+                    <span id="phaseBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-700">Mencari...</span>
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span id="currentGroupLabel">Menunggu...</span>
+                        <span id="progressText">0/0</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progressBar" class="bg-green-600 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-7 gap-3 mb-4">
+                    <div class="bg-green-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-green-600" id="joinedCount">0</p>
+                        <p class="text-sm text-green-800">Berhasil Join</p>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-yellow-600" id="pendingCount">0</p>
+                        <p class="text-sm text-yellow-800">Pending</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-blue-600" id="alreadyJoinedCount">0</p>
+                        <p class="text-sm text-blue-800">Sudah Join</p>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-orange-600" id="fullCount">0</p>
+                        <p class="text-sm text-orange-800">Grup Penuh</p>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-red-600" id="failedCount">0</p>
+                        <p class="text-sm text-red-800">Gagal</p>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-gray-700" id="foundCount">0</p>
+                        <p class="text-sm text-gray-800">Ditemukan</p>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded text-center">
+                        <p class="text-2xl font-bold text-purple-600" id="totalMembersCount">0</p>
+                        <p class="text-sm text-purple-800">Total Anggota</p>
+                    </div>
+                </div>
+
+                <!-- Log Console -->
+                <div class="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto font-mono text-sm">
+                    <div id="logConsole" class="space-y-1">
+                        <p class="text-gray-400">Menunggu auto-join dimulai...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle sidebar section collapse/expand
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+            const items = header.nextElementSibling;
+            if (items && items.classList.contains('sidebar-items')) {
+                items.style.display = items.style.display === 'none' ? '' : 'none';
+            }
+        }
+
+        let isRunning = false;
+        let currentJoinId = null;
+        let ws = null;
+        let pollTimer = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkConnection();
+            loadAccounts();
+        });
+
+        function setConnStatus(ok, label) {
+            const badge = document.getElementById('connStatus');
+            const banner = document.getElementById('connBanner');
+            if (ok) {
+                badge.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700';
+                badge.innerHTML = '<i class="fas fa-circle mr-1"></i>' + label;
+                banner.classList.add('hidden');
+            } else {
+                badge.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-red-100 text-red-700';
+                badge.innerHTML = '<i class="fas fa-circle mr-1"></i>' + label;
+                banner.classList.remove('hidden');
+            }
+        }
+
+        async function checkConnection() {
+            // Deteksi halaman dibuka via file:// (bukan http://localhost:8080)
+            if (window.location.protocol === 'file:') {
+                setConnStatus(false, 'Server tidak terhubung');
+                document.getElementById('connBannerMsg').innerHTML =
+                    'Halaman ini dibuka langsung dari file. Tutup halaman ini, jalankan <b>START-SERVER.bat</b>, lalu buka ' +
+                    '<a href="http://localhost:8080/join-groups.html" class="underline font-semibold">http://localhost:8080/join-groups.html</a>';
+                return;
+            }
+            try {
+                const res = await fetch('/api/accounts');
+                if (res.ok) {
+                    setConnStatus(true, 'Server terhubung');
+                } else {
+                    setConnStatus(false, 'Server error (' + res.status + ')');
+                }
+            } catch (e) {
+                setConnStatus(false, 'Server tidak terhubung');
+            }
+        }
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                if (data.success) {
+                    const select = document.getElementById('accountSelect');
+                    data.accounts.forEach(acc => {
+                        select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    });
+                    setConnStatus(true, 'Server terhubung');
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+                setConnStatus(false, 'Server tidak terhubung');
+            }
+        }
+
+        function addLog(message, type = 'info') {
+            const console = document.getElementById('logConsole');
+            const colors = {
+                info: 'text-gray-300',
+                success: 'text-green-400',
+                warning: 'text-yellow-400',
+                error: 'text-red-400'
+            };
+            const time = new Date().toLocaleTimeString();
+            console.innerHTML += `<p class="log-entry ${colors[type]}">[${time}] ${message}</p>`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function setPhase(phase) {
+            const badge = document.getElementById('phaseBadge');
+            const map = {
+                searching: ['Mencari Grup...', 'bg-blue-100 text-blue-700'],
+                joining: ['Menjoin Grup...', 'bg-green-100 text-green-700'],
+                cooldown: ['🛑 Cooldown Spam — menunggu...', 'bg-red-100 text-red-700'],
+                completed: ['Selesai', 'bg-gray-200 text-gray-700'],
+                cancelled: ['Dibatalkan', 'bg-yellow-100 text-yellow-700'],
+                failed: ['Gagal', 'bg-red-100 text-red-700']
+            };
+            const [label, cls] = map[phase] || [phase, 'bg-gray-100 text-gray-700'];
+            badge.textContent = label;
+            badge.className = `text-xs font-semibold px-3 py-1 rounded-full ${cls}`;
+        }
+
+        function updateCounters(data) {
+            document.getElementById('joinedCount').textContent = data.joined || 0;
+            document.getElementById('pendingCount').textContent = data.pending || 0;
+            document.getElementById('alreadyJoinedCount').textContent = data.alreadyJoined || 0;
+            document.getElementById('fullCount').textContent = data.full || 0;
+            document.getElementById('failedCount').textContent = data.failed || 0;
+            document.getElementById('foundCount').textContent = data.foundGroups || 0;
+            document.getElementById('totalMembersCount').textContent = (data.totalMembers || 0).toLocaleString('id-ID');
+
+            const total = data.targetGroups || 0;
+            const done = (data.joined || 0) + (data.pending || 0) + (data.alreadyJoined || 0) + (data.full || 0) + (data.failed || 0);
+            const percent = total > 0 ? Math.min((done / total) * 100, 100) : 0;
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressText').textContent = total > 0 ? `${done}/${total}` : `${data.foundGroups || 0} ditemukan`;
+
+            if (data.currentGroup) {
+                document.getElementById('currentGroupLabel').textContent = `Sedang: ${data.currentGroup}`;
+            }
+        }
+
+        function finishRun() {
+            isRunning = false;
+            currentJoinId = null;
+            if (ws) { try { ws.close(); } catch (e) {} ws = null; }
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            document.getElementById('btnJoin').disabled = false;
+            document.getElementById('btnJoin').classList.remove('opacity-50');
+            document.getElementById('btnCancel').classList.add('hidden');
+        }
+
+        async function startAutoJoin() {
+            if (isRunning) return;
+
+            if (window.location.protocol === 'file:') {
+                alert('❌ Halaman dibuka langsung dari file!\n\nJalankan START-SERVER.bat dulu, lalu buka:\nhttp://localhost:8080/join-groups.html');
+                return;
+            }
+
+            const accountId = document.getElementById('accountSelect').value;
+            const keyword = document.getElementById('keyword').value.trim();
+
+            if (!accountId) { alert('Pilih akun terlebih dahulu'); return; }
+            if (!keyword) { alert('Isi keyword pencarian terlebih dahulu'); return; }
+
+            const joinData = {
+                account_id: accountId,
+                keyword: keyword,
+                max_groups: parseInt(document.getElementById('maxGroups').value) || 100,
+                skip_joined: document.getElementById('skipJoined').checked,
+                min_members: parseInt(document.getElementById('minMembers').value) || 0,
+                nearby: document.getElementById('nearbyFilter').checked,
+                public_only: document.getElementById('publicOnlyFilter').checked,
+                auto_answer: document.getElementById('autoAnswer').value.trim() || 'Setuju dengan semua aturan grup dan ingin bergabung untuk berdiskusi.',
+                delay_seconds: parseInt(document.getElementById('delaySeconds').value) || 60,
+                use_variable_delay: document.getElementById('useVariableDelay').checked
+            };
+
+            // Show progress section
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('logConsole').innerHTML = '';
+            addLog('Memulai auto-join...', 'info');
+            setPhase('searching');
+            updateCounters({});
+
+            // Update UI
+            document.getElementById('btnJoin').disabled = true;
+            document.getElementById('btnJoin').classList.add('opacity-50');
+            document.getElementById('btnCancel').classList.remove('hidden');
+            isRunning = true;
+
+            try {
+                const res = await fetch('/api/auto-join-groups', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(joinData)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentJoinId = data.joinId;
+                    addLog(`Auto-join dimulai (ID: ${currentJoinId})`, 'success');
+                    connectWs();
+                    startPolling();
+                } else {
+                    addLog('Error: ' + data.error, 'error');
+                    finishRun();
+                }
+            } catch (e) {
+                addLog('Error: ' + e.message, 'error');
+                finishRun();
+            }
+        }
+
+        function connectWs() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+            ws.onopen = () => addLog('🔌 Connected to server', 'info');
+
+            ws.onmessage = (event) => {
+                try {
+                    const log = JSON.parse(event.data);
+                    // Only show auto-join related logs
+                    const msg = log.message || '';
+                    if (msg.includes('AUTO JOIN') || msg.includes('auto-join') ||
+                        msg.includes('Klik Gabung') || msg.includes('Joining:') ||
+                        msg.includes('Berhasil join') || msg.includes('Gagal join') ||
+                        msg.includes('Gagal') || msg.includes('Sudah di-join') ||
+                        msg.includes('Request terkirim') || msg.includes('Searching...') ||
+                        msg.includes('Ditemukan') || msg.includes('Memfilter') ||
+                        msg.includes('Sort:') || msg.includes('Skip') || msg.includes('Min') ||
+                        msg.includes('Target:') || msg.includes('TOTAL ANGGOTA') ||
+                        msg.includes('Waiting') || msg.includes('Cooldown') ||
+                        msg.includes('SPAM') || msg.includes('SKIP') ||
+                        msg.includes('AUTO JOIN COMPLETE') || msg.includes('fatal error')) {
+                        addLog(msg, log.type);
+                    }
+                } catch (e) { /* ignore */ }
+            };
+
+            ws.onerror = () => addLog('⚠️ WebSocket error', 'warning');
+
+            ws.onclose = () => {
+                if (isRunning) {
+                    addLog('🔌 Connection lost - reconnecting in 3s...', 'warning');
+                    setTimeout(() => { if (isRunning) connectWs(); }, 3000);
+                }
+            };
+        }
+
+        function startPolling() {
+            pollTimer = setInterval(async () => {
+                if (!currentJoinId) return;
+                try {
+                    const res = await fetch(`/api/auto-join-groups/${currentJoinId}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        setPhase(data.phase || data.status);
+                        updateCounters(data);
+
+                        if (['completed', 'cancelled', 'failed'].includes(data.status)) {
+                            if (data.status === 'completed') {
+                                addLog(`✅ AUTO JOIN SELESAI — Join: ${data.joined}, Pending: ${data.pending}, Sudah Join: ${data.alreadyJoined}, Gagal: ${data.failed}`, 'success');
+                            } else if (data.status === 'cancelled') {
+                                addLog('⚠️ Auto-join dibatalkan', 'warning');
+                            } else {
+                                addLog('❌ Auto-join gagal: ' + (data.error || 'unknown'), 'error');
+                            }
+                            finishRun();
+                        }
+                    }
+                } catch (e) { /* ignore polling errors */ }
+            }, 3000);
+        }
+
+        async function cancelAutoJoin() {
+            if (!currentJoinId) return;
+            if (!confirm('Yakin ingin membatalkan auto-join?')) return;
+            try {
+                await fetch(`/api/auto-join-groups/${currentJoinId}/cancel`, { method: 'POST' });
+                addLog('⚠️ Membatalkan auto-join...', 'warning');
+            } catch (e) {
+                addLog('Error cancel: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

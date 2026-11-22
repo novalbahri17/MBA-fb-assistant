@@ -40,10 +40,11 @@ class PostHistory {
         let sql = `
             SELECT ph.*, 
                 fa.name as account_name,
-                fg.group_name
+                fg.group_name,
+                fg.group_id as fb_group_id
             FROM post_history ph
             LEFT JOIN facebook_accounts fa ON ph.facebook_account_id = fa.id
-            LEFT JOIN fb_groups fg ON ph.group_id = fg.id
+            LEFT JOIN fb_groups fg ON ph.group_id = fg.group_id
             WHERE 1=1
         `;
         const params = [];

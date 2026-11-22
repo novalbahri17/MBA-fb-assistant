@@ -31,18 +31,33 @@ function getFormattedTime() {
  */
 function parseMemberCount(text) {
   if (!text) return null;
-  const match = text.match(/([\d.,]+)\s*[KkMm]?/);
-  if (!match) return null;
-  let numStr = match[1].replace(/\./g, '').replace(/,/g, '');
-  const suffixMatch = text.match(/(\d[\d.,]*)\s*([KkMm])/);
+  // Format yang didukung:
+  //   Indonesia: "57 rb anggota", "1,2 jt anggota", "1.234 anggota"
+  //   English:   "57K members", "1.2M members", "1,234 members"
+  const suffixMatch = text.match(/([\d.,]+)\s*(rb|jt|ribu|juta|k|m)\b/i);
   if (suffixMatch) {
-    const suffix = suffixMatch[2].toUpperCase();
-    const baseNum = parseFloat(suffixMatch[1].replace(/\./g, '').replace(/,/g, ''));
-    if (suffix === 'K') return Math.round(baseNum * 1000);
-    if (suffix === 'M') return Math.round(baseNum * 1000000);
+    const baseNum = parseFloat(suffixMatch[1].replace(/\./g, '').replace(/,/g, '.'));
+    if (isNaN(baseNum)) return null;
+    const suffix = suffixMatch[2].toLowerCase();
+    if (suffix === 'rb' || suffix === 'ribu' || suffix === 'k') return Math.round(baseNum * 1000);
+    if (suffix === 'jt' || suffix === 'juta' || suffix === 'm') return Math.round(baseNum * 1000000);
   }
-  const parsed = parseInt(numStr, 10);
+  const plainMatch = text.match(/([\d.,]+)/);
+  if (!plainMatch) return null;
+  const parsed = parseInt(plainMatch[1].replace(/\./g, '').replace(/,/g, ''), 10);
   return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Parse "90+ postingan per hari" / "10+ posts per day" menjadi angka (90, 10, dst).
+ * Dipakai sebagai sinyal aktivitas grup (makin tinggi makin aktif).
+ */
+function parsePostsPerDay(text) {
+  if (!text) return null;
+  const match = text.match(/(\d+)\s*\+?\s*(postingan|posts|posting)/i);
+  if (!match) return null;
+  const num = parseInt(match[1], 10);
+  return isNaN(num) ? null : num;
 }
 
 // ==================== NETWORK HEALTH MONITOR ====================
@@ -295,14 +310,23 @@ function extractGroupData(element) {
       groupName = `Group ${groupId}`;
     }
 
-    // Strategy 3: Extract member count
+    // Strategy 3: Extract member count (inline parse — browser context)
     let memberCount = null;
     let memberCountRaw = null;
     const parentText = element.parentElement?.textContent || element.textContent || '';
-    const memberMatch = parentText.match(/([\d.,]+[KkMm]?)\s*(anggota|members|anggota\s)/i);
+    const memberMatch = parentText.match(/([\d.,]+\s*(?:rb|jt|ribu|juta|[KkMm])?)\s*(anggota|members)/i);
     if (memberMatch) {
       memberCount = memberMatch[0];
-      memberCountRaw = parseMemberCount(memberCount);
+      const sm = memberMatch[0].match(/([\d.,]+)\s*(rb|jt|ribu|juta|k|m)\b/i);
+      if (sm) {
+        const base = parseFloat(sm[1].replace(/\./g, '').replace(/,/g, '.'));
+        const suf = sm[2].toLowerCase();
+        memberCountRaw = (suf === 'rb' || suf === 'ribu' || suf === 'k') ? Math.round(base * 1000)
+          : (suf === 'jt' || suf === 'juta' || suf === 'm') ? Math.round(base * 1000000) : Math.round(base);
+      } else {
+        const pm = memberMatch[0].match(/([\d.,]+)/);
+        memberCountRaw = pm ? parseInt(pm[1].replace(/\./g, '').replace(/,/g, ''), 10) : null;
+      }
     }
 
     // Strategy 4: Extract privacy status
@@ -403,18 +427,24 @@ async function extractGroupsFromPage(page) {
 
         if (!name || name.length < 2) continue;
 
-        // Get member count from surrounding text
-        let memberCount = null;
-        let memberCountRaw = null;
+        // Get member count + posts/day RAW TEXT from surrounding card text
+        // Format FB Indonesia: "Publik · 57 rb anggota · 90+ postingan per hari"
+        // NOTE: parsing dilakukan di sisi Node (parseMemberCount/parsePostsPerDay
+        // tidak tersedia di browser context)
+        let memberCountText = null;
+        let postsText = null;
         let searchParent = link.closest('div') || link.parentElement;
-        for (let i = 0; i < 5 && searchParent; i++) {
+        for (let i = 0; i < 8 && searchParent; i++) {
           const text = searchParent.textContent || '';
-          const memberMatch = text.match(/([\d.,]+[KkMm]?)\s*(anggota|members)/i);
-          if (memberMatch) {
-            memberCount = memberMatch[0];
-            memberCountRaw = parseMemberCount(memberCount);
-            break;
+          if (memberCountText === null) {
+            const memberMatch = text.match(/([\d.,]+\s*(?:rb|jt|ribu|juta|[KkMm])?)\s*(anggota|members)/i);
+            if (memberMatch) memberCountText = memberMatch[0];
           }
+          if (postsText === null) {
+            const postsMatch = text.match(/(\d+)\s*\+?\s*(postingan|posts|posting)\s*per\s*(hari|day|week)/i);
+            if (postsMatch) postsText = postsMatch[0];
+          }
+          if (memberCountText !== null && postsText !== null) break;
           searchParent = searchParent.parentElement;
         }
 
@@ -434,14 +464,41 @@ async function extractGroupsFromPage(page) {
           avatar = img.getAttribute('src') || img.getAttribute('data-src');
         }
 
+        // Deteksi apakah grup SUDAH di-join: tombol di kartu sudah jadi
+        // "Lihat"/"Joined"/"Permintaan terkirim" (bukan "Gabung" lagi)
+        let alreadyJoined = false;
+        let card = link;
+        for (let i = 0; i < 10 && card.parentElement; i++) {
+          card = card.parentElement;
+          const cardText = card.innerText || '';
+          if (card.offsetHeight > 40 && /gabung|join|lihat/i.test(cardText)) break;
+        }
+        const cardButtons = Array.from(card.querySelectorAll('[role="button"], button, a[role="button"]'));
+        for (const btn of cardButtons) {
+          const bt = ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+          if (bt.includes('lihat') || bt.includes('joined') || bt.includes('terkirim') ||
+              bt.includes('request sent') || bt.includes('pending')) {
+            alreadyJoined = true;
+            break;
+          }
+        }
+
+        // Deteksi grup PENUH: Facebook menampilkan "Grup penuh"/"Group full"
+        // di kartu (grup mencapai batas 2 juta anggota) — tidak bisa di-join
+        const fullCardText = (card.innerText || '').toLowerCase();
+        const isFull = fullCardText.includes('grup penuh') || fullCardText.includes('group full') ||
+                       fullCardText.includes('kelompok ini penuh') || fullCardText.includes('this group is full');
+
         results.push({
           id: groupId,
           name: name.substring(0, 200),
           url: href.startsWith('http') ? href : `https://www.facebook.com${href}`,
-          memberCount,
-          memberCountRaw,
+          memberCountText,
+          postsText,
           privacy,
-          avatar
+          avatar,
+          alreadyJoined,
+          isFull
         });
       }
 
@@ -449,6 +506,12 @@ async function extractGroupsFromPage(page) {
     });
 
     for (const group of linksGroups) {
+      // Parse di sisi Node (browser context tidak punya fungsi parser)
+      group.memberCount = group.memberCountText || null;
+      group.memberCountRaw = group.memberCountText ? parseMemberCount(group.memberCountText) : null;
+      group.postsPerDay = group.postsText ? parsePostsPerDay(group.postsText) : null;
+      delete group.memberCountText;
+      delete group.postsText;
       if (group.id && !groups.has(group.id)) {
         groups.set(group.id, group);
       }
@@ -1019,6 +1082,488 @@ async function searchAndJoinGroups(page, options = {}) {
   }
 }
 
+// ==================== FILTERED GROUP SEARCH (for Auto Join) ====================
+
+/**
+ * Search groups by keyword and collect them with member count data.
+ * Designed for the Auto Join feature — collects as many groups as possible
+ * (up to maxResults) so the server can filter & sort them.
+ *
+ * @param {Page} page - Puppeteer page object (already logged in)
+ * @param {Object} options - Search options
+ * @param {string} options.keyword - Search keyword
+ * @param {number} [options.maxResults=200] - Maximum groups to collect
+ * @param {number} [options.maxScrolls=100] - Maximum scroll iterations
+ * @param {number} [options.maxStagnantScrolls=8] - Stop after N scrolls with no new groups
+ * @param {boolean} [options.nearby=false] - Filter "Di sekitar saya" (grup lokal)
+ * @param {boolean} [options.publicOnly=false] - Filter "Grup publik" (hanya grup publik)
+ * @param {Function} [options.onProgress] - Progress callback
+ * @param {AbortSignal} [options.signal] - Cancellation signal
+ * @returns {Promise<Object>} { groups: Array, stats: Object }
+ */
+async function searchGroupsFiltered(page, options = {}) {
+  const {
+    keyword,
+    maxResults = 200,
+    maxScrolls = 100,
+    maxStagnantScrolls = 8,
+    nearby = false,
+    publicOnly = false,
+    onProgress,
+    signal
+  } = options;
+
+  if (!keyword) {
+    throw new Error('Keyword is required for group search');
+  }
+
+  console.log(`🔍 [${getFormattedTime()}] Searching groups (filtered mode): "${keyword}" (max ${maxResults})`);
+
+  const foundGroups = new Map();
+  const startTime = Date.now();
+  let scrollCount = 0;
+  let stagnantScrolls = 0;
+  let totalSkippedJoined = 0;
+  let totalSkippedFull = 0;
+
+  try {
+    let searchUrl = `https://www.facebook.com/search/groups/?q=${encodeURIComponent(keyword)}`;
+
+    // Filter Facebook ("Di sekitar saya" & "Grup publik") — sama persis dengan
+    // toggle di sidebar filter Facebook. Facebook menerapkannya lewat param URL
+    // `filters=` (base64 JSON), jadi kita bisa langsung append ke URL tanpa
+    // perlu klik switch di halaman. Token diverifikasi langsung dari Facebook:
+    //   - "Di sekitar saya" = filter_groups_local
+    //   - "Grup publik"     = public_groups
+    const filtersObj = {};
+    if (nearby) {
+      filtersObj['filter_groups_local:0'] = JSON.stringify({ name: 'filter_groups_local', args: '' });
+    }
+    if (publicOnly) {
+      filtersObj['public_groups:0'] = JSON.stringify({ name: 'public_groups', args: '' });
+    }
+    if (Object.keys(filtersObj).length > 0) {
+      searchUrl += `&filters=${encodeURIComponent(Buffer.from(JSON.stringify(filtersObj)).toString('base64'))}`;
+      const activeFilters = [nearby ? '"Di sekitar saya"' : null, publicOnly ? '"Grup publik"' : null].filter(Boolean).join(' + ');
+      console.log(`🎛️ [${getFormattedTime()}] Filter Facebook AKTIF: ${activeFilters}`);
+    }
+
+    await page.goto(searchUrl, {
+      waitUntil: 'networkidle2',
+      timeout: 60000
+    });
+
+    await delay(3000);
+
+    while (scrollCount < maxScrolls && foundGroups.size < maxResults) {
+      if (signal?.aborted) {
+        console.log(`⚠️ [${getFormattedTime()}] Search cancelled by user`);
+        break;
+      }
+
+      const groups = await extractGroupsFromPage(page);
+      let newCount = 0;
+
+      for (const [id, group] of groups) {
+        if (foundGroups.has(id)) continue;
+
+        // Grup yang SUDAH di-join (tombol sudah jadi "Lihat"/"Terkirim")
+        // TIDAK dihitung sebagai grup ditemukan — langsung dilewati
+        if (group.alreadyJoined) {
+          totalSkippedJoined++;
+          continue;
+        }
+
+        // Grup PENUH (batas anggota Facebook) tidak bisa di-join — dilewati juga
+        if (group.isFull) {
+          totalSkippedFull++;
+          continue;
+        }
+
+        if (foundGroups.size < maxResults) {
+          // position = urutan ditemukan (1 = paling awal di hasil pencarian = paling aktif/relevan)
+          group.position = foundGroups.size + 1;
+          foundGroups.set(id, group);
+          newCount++;
+        }
+      }
+
+      if (newCount === 0) {
+        stagnantScrolls++;
+        if (stagnantScrolls >= maxStagnantScrolls) {
+          console.log(`ℹ️ [${getFormattedTime()}] No new groups after ${stagnantScrolls} scrolls — stopping`);
+          break;
+        }
+      } else {
+        stagnantScrolls = 0;
+      }
+
+      onProgress?.({
+        phase: 'searching',
+        found: foundGroups.size,
+        skippedJoined: totalSkippedJoined,
+        skippedFull: totalSkippedFull,
+        maxResults,
+        keyword,
+        scrollCount: scrollCount + 1
+      });
+
+      // Kalau target sudah tercapai, berhenti — tidak perlu scroll lagi
+      if (foundGroups.size >= maxResults) {
+        console.log(`✅ [${getFormattedTime()}] Target ${maxResults} grup tercapai — berhenti scroll`);
+        break;
+      }
+
+      // Scroll ke paling bawah agar Facebook memuat hasil berikutnya (infinite scroll)
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await delay(1500 + Math.random() * 1500);
+      scrollCount++;
+    }
+
+    const groupsArray = Array.from(foundGroups.values()).map(group => ({
+      group_id: group.id,
+      group_name: group.name,
+      group_url: group.url,
+      member_count: group.memberCount,
+      member_count_raw: group.memberCountRaw,
+      posts_per_day: group.postsPerDay || null,
+      group_type: group.privacy,
+      avatar_url: group.avatar,
+      position: group.position || null,
+      is_joined: false,
+      scanned_at: new Date().toISOString()
+    }));
+
+    console.log(`✅ [${getFormattedTime()}] Search complete: ${groupsArray.length} groups collected in ${Math.round((Date.now() - startTime) / 1000)}s (${totalSkippedJoined} grup sudah di-join dilewati, ${totalSkippedFull} grup penuh dilewati)`);
+
+    return {
+      groups: groupsArray,
+      stats: {
+        found: groupsArray.length,
+        skippedJoined: totalSkippedJoined,
+        skippedFull: totalSkippedFull,
+        scrolls: scrollCount,
+        duration: Date.now() - startTime
+      }
+    };
+
+  } catch (error) {
+    console.error(`❌ [${getFormattedTime()}] Filtered search failed: ${error.message}`);
+    return {
+      groups: Array.from(foundGroups.values()).map(group => ({
+        group_id: group.id,
+        group_name: group.name,
+        group_url: group.url,
+        member_count: group.memberCount,
+        member_count_raw: group.memberCountRaw,
+        posts_per_day: group.postsPerDay || null,
+        group_type: group.privacy,
+        avatar_url: group.avatar,
+        position: group.position || null,
+        is_joined: false,
+        scanned_at: new Date().toISOString()
+      })),
+      stats: {
+        found: foundGroups.size,
+        scrolls: scrollCount,
+        duration: Date.now() - startTime,
+        error: error.message
+      }
+    };
+  }
+}
+
+// ==================== SPAM DETECTION ====================
+
+// Indikator akun diblokir / dibatasi Facebook (locale id_ID + en_US)
+const SPAM_INDICATORS = [
+  'sementara diblokir', 'temporarily blocked',
+  'aktivitas tidak biasa', 'unusual activity',
+  'limits to prevent misuse', 'batas untuk mencegah penyalahgunaan',
+  'coba lagi nanti', 'try again later',
+  'tindakan dibatasi', 'action blocked', 'action restricted',
+  'kami membatasi', 'terlalu banyak tindakan', 'too many actions',
+  'amankan akun', 'secure your account', 'checkpoint'
+];
+
+/**
+ * Cek apakah halaman Facebook sedang menampilkan peringatan spam/blokir
+ * (banner di body atau dialog popup). Dipakai sebelum & sesudah klik Gabung.
+ * @param {Page} page
+ * @returns {Promise<{spam: boolean, indicator?: string, inDialog?: boolean}>}
+ */
+async function detectSpamOnPage(page) {
+  try {
+    return await page.evaluate((indicators) => {
+      const text = (document.body.innerText || '').toLowerCase();
+      for (const ind of indicators) {
+        if (text.includes(ind)) return { spam: true, indicator: ind };
+      }
+      const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]');
+      for (const dlg of dialogs) {
+        const dt = (dlg.innerText || '').toLowerCase();
+        for (const ind of indicators) {
+          if (dt.includes(ind)) return { spam: true, indicator: ind, inDialog: true };
+        }
+      }
+      return { spam: false };
+    }, SPAM_INDICATORS);
+  } catch (e) {
+    return { spam: false };
+  }
+}
+
+// ==================== JOIN FROM SEARCH PAGE ====================
+
+/**
+ * Join grup LANGSUNG dari halaman hasil pencarian (tanpa membuka halaman grup).
+ * Di halaman search, setiap kartu grup punya tombol "Gabung"/"Join".
+ * Setelah diklik, tombol berubah jadi "Lihat"/"Joined" / "Permintaan terkirim" —
+ * itu tandanya sudah tergabung (atau request terkirim untuk grup privat).
+ *
+ * @param {Page} page - Puppeteer page (harus sedang berada di halaman search groups)
+ * @param {string} groupId - ID grup yang mau di-join
+ * @param {Object} [options] - Opsi tambahan
+ * @param {string} [options.autoAnswer] - Jawaban otomatis untuk pertanyaan masuk grup (screening questions)
+ * @returns {Promise<Object>} { success, groupId, alreadyJoined, pendingApproval, groupFull, answeredQuestions, error }
+ */
+async function joinGroupFromSearchPage(page, groupId, options = {}) {
+  const { autoAnswer = 'Setuju dengan semua aturan grup dan ingin bergabung untuk berdiskusi.' } = options;
+  try {
+    // Deteksi spam/blocked dulu (banner di body atau dialog dari Facebook)
+    const spamCheck = await detectSpamOnPage(page);
+    if (spamCheck.spam) {
+      return { success: false, groupId, spamDetected: true, error: `Akun terdeteksi spam/blocked (${spamCheck.indicator})` };
+    }
+
+    // Pastikan kartu grup ada di DOM — kalau belum, scroll dari atas sampai ketemu
+    let cardInDom = await page.evaluate((gid) => {
+      return Array.from(document.querySelectorAll('a[href*="/groups/"]'))
+        .some(a => (a.getAttribute('href') || '').includes(`/groups/${gid}`));
+    }, groupId);
+
+    if (!cardInDom) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await delay(1000);
+      for (let s = 0; s < 80 && !cardInDom; s++) {
+        await page.evaluate(() => window.scrollBy(0, 1500));
+        await delay(700);
+        cardInDom = await page.evaluate((gid) => {
+          return Array.from(document.querySelectorAll('a[href*="/groups/"]'))
+            .some(a => (a.getAttribute('href') || '').includes(`/groups/${gid}`));
+        }, groupId);
+      }
+    }
+
+    if (!cardInDom) {
+      return { success: false, groupId, error: 'Kartu grup tidak ditemukan di halaman search' };
+    }
+
+    const result = await page.evaluate((gid) => {
+      // Cari semua link menuju grup ini
+      const links = Array.from(document.querySelectorAll('a[href*="/groups/"]'))
+        .filter(a => (a.getAttribute('href') || '').includes(`/groups/${gid}`));
+      if (links.length === 0) {
+        return { success: false, error: 'Kartu grup tidak ditemukan di halaman (scroll belum sampai?)' };
+      }
+
+      // Naik ke container kartu (card) yang memuat tombol Gabung
+      let card = links[0];
+      for (let i = 0; i < 10 && card.parentElement; i++) {
+        card = card.parentElement;
+        const cardText = (card.innerText || '');
+        if (/gabung|join|lihat/i.test(cardText) && card.offsetHeight > 40) break;
+      }
+
+      const buttons = Array.from(card.querySelectorAll('[role="button"], button, a[role="button"]'));
+
+      // 0) Cek apakah grup PENUH — Facebook menampilkan "Grup penuh"/"Group full"
+      // dan biasanya tidak ada tombol Gabung sama sekali
+      const cardTextLower = (card.innerText || '').toLowerCase();
+      if (cardTextLower.includes('grup penuh') || cardTextLower.includes('group full') ||
+          cardTextLower.includes('kelompok ini penuh') || cardTextLower.includes('this group is full')) {
+        return { success: false, groupFull: true, error: 'Grup penuh (mencapai batas anggota Facebook)' };
+      }
+
+      // 1) Cek apakah sudah tergabung: tombol bertuliskan "Lihat"/"Joined"/"Permintaan terkirim"
+      for (const btn of buttons) {
+        const t = ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+        if (t.includes('lihat') || t.includes('joined') || t.includes('terkirim') ||
+            t.includes('request sent') || t.includes('pending')) {
+          return { success: true, alreadyJoined: true,
+                   pendingApproval: t.includes('terkirim') || t.includes('request') || t.includes('pending') };
+        }
+      }
+
+      // 2) Klik tombol "Gabung"/"Join"
+      for (const btn of buttons) {
+        const t = ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+        if (t.includes('gabung') || t.includes('join')) {
+          btn.scrollIntoView({ block: 'center' });
+          btn.click();
+          return { success: true, clicked: true };
+        }
+      }
+
+      return { success: false, error: 'Tombol Gabung tidak ditemukan di kartu grup' };
+    }, groupId);
+
+    if (!result.success || result.alreadyJoined) return { ...result, groupId };
+    if (!result.clicked) return { ...result, groupId };
+
+    // Grup privat sering memunculkan dialog konfirmasi ("Setuju & bergabung" / aturan grup)
+    await delay(1500);
+
+    // Cek dulu apakah dialog yang muncul adalah peringatan "grup penuh"
+    const fullDialog = await page.evaluate(() => {
+      const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]');
+      for (const dlg of dialogs) {
+        const t = (dlg.innerText || '').toLowerCase();
+        if (t.includes('grup penuh') || t.includes('group full') ||
+            t.includes('kelompok ini penuh') || t.includes('this group is full')) {
+          // Tutup dialog (klik tombol X / "Tutup" / "Close" / "OK")
+          const btns = Array.from(dlg.querySelectorAll('[role="button"], button'));
+          for (const btn of btns) {
+            const bt = ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+            if (bt.includes('tutup') || bt.includes('close') || bt.includes('ok') ||
+                bt.includes('mengerti') || bt.includes('got it') || btn.getAttribute('aria-label')?.toLowerCase().includes('close')) {
+              btn.click();
+              return true;
+            }
+          }
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (fullDialog) {
+      return { success: false, groupId, groupFull: true, error: 'Grup penuh (mencapai batas anggota Facebook)' };
+    }
+
+    // Tangani dialog pertanyaan grup / persetujuan aturan (Screening Questions & Group Rules)
+    const dialogResult = await page.evaluate((answerText) => {
+      const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]');
+      if (dialogs.length === 0) return { handled: false, answered: false };
+
+      let answeredAny = false;
+
+      for (const dlg of dialogs) {
+        // 1) Cek dan centang semua checkbox persetujuan aturan ("Saya setuju dengan aturan grup", dll)
+        const checkboxes = dlg.querySelectorAll('input[type="checkbox"], [role="checkbox"]');
+        for (const cb of checkboxes) {
+          const isChecked = cb.checked || cb.getAttribute('aria-checked') === 'true';
+          if (!isChecked) {
+            cb.click();
+            answeredAny = true;
+          }
+        }
+
+        // 2) Isi semua input text / textarea / contenteditable untuk pertanyaan masuk grup
+        const textInputs = dlg.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
+        for (const input of textInputs) {
+          if (input.getAttribute('contenteditable') === 'true') {
+            if (!input.innerText || input.innerText.trim().length === 0) {
+              input.innerText = answerText;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              answeredAny = true;
+            }
+          } else {
+            if (!input.value || input.value.trim().length === 0) {
+              input.value = answerText;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+              answeredAny = true;
+            }
+          }
+        }
+
+        // 3) Pilih opsi radio jika ada pertanyaan pilihan ganda (pilih opsi pertama / yang positif)
+        const radioGroups = dlg.querySelectorAll('[role="radiogroup"], fieldset');
+        for (const rg of radioGroups) {
+          const radios = rg.querySelectorAll('input[type="radio"], [role="radio"]');
+          const hasChecked = Array.from(radios).some(r => r.checked || r.getAttribute('aria-checked') === 'true');
+          if (!hasChecked && radios.length > 0) {
+            // Prioritaskan radio yang mengandung teks "ya" / "setuju" / "yes" / "agree"
+            let chosen = radios[0];
+            for (const r of radios) {
+              const label = (r.closest('label')?.textContent || r.parentElement?.textContent || '').toLowerCase();
+              if (label.includes('ya') || label.includes('setuju') || label.includes('yes') || label.includes('agree')) {
+                chosen = r;
+                break;
+              }
+            }
+            chosen.click();
+            answeredAny = true;
+          }
+        }
+
+        // 4) Klik tombol kirim / submit / setuju / konfirmasi
+        const btns = Array.from(dlg.querySelectorAll('[role="button"], button'));
+        for (const btn of btns) {
+          const t = ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+          if (t.includes('kirim') || t.includes('submit') || t.includes('send') ||
+              t.includes('setuju') || t.includes('agree') || t.includes('gabung') ||
+              t.includes('join') || t.includes('konfirmasi') || t.includes('confirm') ||
+              t.includes('selesai') || t.includes('done')) {
+            btn.click();
+            return { handled: true, answered: answeredAny };
+          }
+        }
+      }
+
+      return { handled: true, answered: answeredAny };
+    }, autoAnswer);
+
+    // Tunggu reaksi Facebook, lalu cek apakah muncul peringatan spam SETELAH klik
+    await delay(2500);
+
+    const spamAfter = await detectSpamOnPage(page);
+    if (spamAfter.spam) {
+      return { success: false, groupId, spamDetected: true, error: `Spam terdeteksi setelah klik (${spamAfter.indicator})` };
+    }
+
+    const verify = await page.evaluate((gid) => {
+      const links = Array.from(document.querySelectorAll('a[href*="/groups/"]'))
+        .filter(a => (a.getAttribute('href') || '').includes(`/groups/${gid}`));
+      if (links.length === 0) return { changed: false };
+
+      let card = links[0];
+      for (let i = 0; i < 10 && card.parentElement; i++) {
+        card = card.parentElement;
+        const cardText = (card.innerText || '');
+        if (/gabung|join|lihat/i.test(cardText) && card.offsetHeight > 40) break;
+      }
+
+      const cardText = (card.innerText || '').toLowerCase();
+      const buttons = Array.from(card.querySelectorAll('[role="button"], button, a[role="button"]'));
+      for (const btn of buttons) {
+        const t = ((btn.textContent || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+        if (t.includes('lihat') || t.includes('joined') || t.includes('terkirim') ||
+            t.includes('request sent') || t.includes('pending')) {
+          return { changed: true,
+                   pendingApproval: t.includes('terkirim') || t.includes('request') || t.includes('pending') };
+        }
+      }
+      // Fallback: teks kartu sudah tidak memuat "gabung" lagi
+      return { changed: !/gabung\b|join group/.test(cardText) };
+    }, groupId);
+
+    return {
+      success: verify.changed,
+      groupId,
+      alreadyJoined: false,
+      pendingApproval: verify.pendingApproval || false,
+      answeredQuestions: dialogResult?.answered || false,
+      unconfirmed: !verify.changed,
+      error: verify.changed ? null : 'Tombol tidak berubah setelah diklik'
+    };
+
+  } catch (e) {
+    return { success: false, groupId, error: e.message };
+  }
+}
+
 // ==================== GROUP DETAILS EXTRACTION ====================
 
 /**
@@ -1057,12 +1602,11 @@ async function extractGroupDetails(page, groupId) {
         result.name = heading.textContent?.trim();
       }
 
-      // Extract member count
+      // Extract member count (raw text saja — parsing di sisi Node)
       const bodyText = document.body.textContent || '';
-      const memberMatch = bodyText.match(/([\d.,]+[KkMm]?)\s*(anggota|members)/i);
+      const memberMatch = bodyText.match(/([\d.,]+\s*(?:rb|jt|ribu|juta|[KkMm])?)\s*(anggota|members)/i);
       if (memberMatch) {
         result.memberCount = memberMatch[0];
-        result.memberCountRaw = parseMemberCount(memberMatch[1]);
       }
 
       // Extract privacy
@@ -1080,7 +1624,7 @@ async function extractGroupDetails(page, groupId) {
       group_name: details.name,
       group_url: `https://www.facebook.com/groups/${groupId}`,
       member_count: details.memberCount,
-      member_count_raw: details.memberCountRaw,
+      member_count_raw: details.memberCount ? parseMemberCount(details.memberCount) : null,
       group_type: details.privacy,
       category: details.category,
       description: details.description,
@@ -1106,6 +1650,15 @@ module.exports = {
   // Search function
   searchAndJoinGroups,
 
+  // Filtered search for auto-join feature
+  searchGroupsFiltered,
+
+  // Join langsung dari halaman search (tanpa buka halaman grup)
+  joinGroupFromSearchPage,
+
+  // Deteksi peringatan spam/blokir Facebook di halaman
+  detectSpamOnPage,
+
   // Group details extraction
   extractGroupDetails,
 
@@ -1117,6 +1670,7 @@ module.exports = {
   extractGroupsFromPage,
   smartScrollAndExtract,
   parseMemberCount,
+  parsePostsPerDay,
   delay,
   getFormattedTime
 };

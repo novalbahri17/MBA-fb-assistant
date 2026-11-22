@@ -132,6 +132,28 @@ class Group {
     }
   }
 
+  /**
+   * Hapus grup berdasarkan group_id Facebook (bukan primary key lokal).
+   * Dipakai saat grup di-blacklist karena tidak punya post box.
+   */
+  static async deleteByGroupId(groupId, accountId = null) {
+    try {
+      let sql = "DELETE FROM fb_groups WHERE group_id = ?";
+      const params = [String(groupId)];
+
+      if (accountId !== undefined && accountId !== null) {
+        sql += " AND facebook_account_id = ?";
+        params.push(accountId);
+      }
+
+      const result = await query(sql, params);
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error("Group.deleteByGroupId error:", error);
+      throw error;
+    }
+  }
+
   static async updateLastPosted(groupId) {
     try {
       await query(

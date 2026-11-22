@@ -78,6 +78,19 @@
                     </a>
                 </div>
                 
+                <!-- Auto Join -->
+                <div class="sidebar-section" onclick="toggleSection(this)">
+                    <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
+                        <span>Auto Join</span>
+                        <i class="fas fa-chevron-down toggle-icon text-xs"></i>
+                    </div>
+                </div>
+                <div class="sidebar-items">
+                    <a href="join-groups.html" class="block py-2 px-6 hover:bg-gray-800 transition">
+                        <i class="fas fa-user-plus w-6"></i> Auto Join Grup
+                    </a>
+                </div>
+                
                 <!-- Monitor -->
                 <div class="sidebar-section" onclick="toggleSection(this)">
                     <div class="flex items-center justify-between px-6 py-2 text-xs text-gray-400 uppercase tracking-wider">
@@ -196,9 +209,16 @@
                         <option value="failed">Gagal</option>
                         <option value="pending">Pending Approval</option>
                         <option value="blocked">Blocked</option>
+                        <option value="group_disabled">Grup Nonaktif</option>
+                        <option value="session_invalid">Sesi Expired</option>
                     </select>
                     <input type="date" id="dateFrom" onchange="loadHistory()" class="border rounded-lg px-3 py-2">
                     <input type="date" id="dateTo" onchange="loadHistory()" class="border rounded-lg px-3 py-2">
+                    <select id="limitFilter" onchange="changeLimit()" class="border rounded-lg px-3 py-2">
+                        <option value="10">10 data</option>
+                        <option value="20" selected>20 data</option>
+                        <option value="50">50 data</option>
+                    </select>
                     <div class="flex-1"></div>
                     <div class="relative">
                         <input type="text" id="searchInput" placeholder="Cari..." 
@@ -213,6 +233,7 @@
                 <table class="w-full">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-10">No</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akun</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grup</th>
@@ -400,11 +421,17 @@
             });
         }
 
+        function changeLimit() {
+            currentPage = 1;
+            loadHistory();
+        }
+
         async function loadHistory() {
             try {
                 const params = new URLSearchParams();
+                const limitVal = document.getElementById('limitFilter') ? document.getElementById('limitFilter').value : 20;
                 params.append('page', currentPage);
-                params.append('limit', 20);
+                params.append('limit', limitVal);
                 
                 const accountId = document.getElementById('accountFilter').value;
                 const status = document.getElementById('statusFilter').value;
@@ -438,7 +465,7 @@
             if (historyData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-4xl mb-2"></i>
                             <p>Tidak ada riwayat posting</p>
                         </td>
@@ -447,41 +474,63 @@
                 return;
             }
             
-            tbody.innerHTML = historyData.map(item => {
+            const limitVal = parseInt(document.getElementById('limitFilter').value) || 20;
+            const offset = (currentPage - 1) * limitVal;
+            tbody.innerHTML = historyData.map((item, index) => {
                 const statusClass = {
                     'success': 'status-success',
                     'failed': 'status-failed',
                     'pending_approval': 'status-pending',
-                    'blocked': 'status-blocked'
+                    'blocked': 'status-blocked',
+                    'session_invalid': 'status-blocked'
                 }[item.status] || 'bg-gray-100';
                 
+                const statusIcon = {
+                    'success': '✅',
+                    'failed': '❌',
+                    'pending_approval': '⏳',
+                    'blocked': '🚫',
+                    'group_disabled': '🔕',
+                    'session_invalid': '🔐'
+                }[item.status] || '';
+
                 const statusText = {
                     'success': 'Berhasil',
                     'failed': 'Gagal',
-                    'pending_approval': 'Pending',
-                    'blocked': 'Blocked'
+                    'pending_approval': 'Pending Approval',
+                    'blocked': 'Blocked',
+                    'group_disabled': 'Grup Nonaktif',
+                    'session_invalid': 'Sesi Expired'
                 }[item.status] || item.status;
                 
                 const content = item.post_content || item.content || '';
-                const contentPreview = content.length > 50 ? content.substring(0, 50) + '...' : content;
+                const contentPreview = content.length > 60 ? content.substring(0, 60) + '...' : content;
+
+                // Grup: tampilkan nama jika ada, fallback ke group_id
+                const grupDisplay = item.group_name
+                    ? `<span class="font-medium text-gray-800">${item.group_name}</span><br><span class="text-xs text-gray-400">${item.group_id}</span>`
+                    : `<span class="text-xs text-gray-500">${item.group_id || '-'}</span>`;
                 
                 return `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="px-4 py-3 text-sm">
-                            ${new Date(item.posted_at).toLocaleString('id-ID')}
+                        <td class="px-4 py-3 text-sm text-gray-400 text-center">${offset + index + 1}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            <div>${new Date(item.posted_at).toLocaleDateString('id-ID')}</div>
+                            <div class="text-xs text-gray-400">${new Date(item.posted_at).toLocaleTimeString('id-ID')}</div>
                         </td>
-                        <td class="px-4 py-3 text-sm">${item.account_name || '-'}</td>
                         <td class="px-4 py-3 text-sm">
-                            ${item.group_name ? `<span class="font-medium">${item.group_name}</span>` : '-'}
+                            <span class="font-medium">${item.account_name || '-'}</span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">${contentPreview || '-'}</td>
+                        <td class="px-4 py-3 text-sm">${grupDisplay}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600" title="${content.replace(/"/g, '&quot;')}">${contentPreview || '-'}</td>
                         <td class="px-4 py-3">
                             <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
-                                ${statusText}
+                                ${statusIcon} ${statusText}
                             </span>
+                            ${item.error_message ? `<div class="text-xs text-red-500 mt-1 max-w-xs truncate" title="${item.error_message.replace(/"/g,'&quot;')}">${item.error_message.substring(0,40)}...</div>` : ''}
                         </td>
                         <td class="px-4 py-3">
-                            <button onclick="showDetail(${item.id})" class="text-blue-600 hover:text-blue-800">
+                            <button onclick="showDetail(${item.id})" class="text-blue-600 hover:text-blue-800" title="Lihat Detail">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </td>
@@ -526,6 +575,9 @@
             if (!item) return;
             
             const content = document.getElementById('detailContent');
+            const statusLabel = {'success':'Berhasil','failed':'Gagal','pending_approval':'Pending Approval','blocked':'Blocked','group_disabled':'Grup Nonaktif','session_invalid':'Sesi Expired'}[item.status] || item.status;
+            let imgCount = 0;
+            try { imgCount = item.image_paths ? JSON.parse(item.image_paths).length : 0; } catch(e) {}
             content.innerHTML = `
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
@@ -535,7 +587,7 @@
                         </div>
                         <div>
                             <label class="text-sm text-gray-500">Status</label>
-                            <p><span class="px-2 py-1 rounded-full text-xs ${getStatusClass(item.status)}">${item.status}</span></p>
+                            <p><span class="px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(item.status)}">${statusLabel}</span></p>
                         </div>
                         <div>
                             <label class="text-sm text-gray-500">Akun</label>
@@ -544,25 +596,27 @@
                         <div>
                             <label class="text-sm text-gray-500">Grup</label>
                             <p class="font-medium">${item.group_name || '-'}</p>
+                            <p class="text-xs text-gray-400">${item.group_id || ''}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Approval Status</label>
+                            <p class="text-sm">${item.approval_status || '-'}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Jumlah Gambar</label>
+                            <p class="text-sm">${imgCount > 0 ? imgCount + ' gambar' : 'Tidak ada gambar'}</p>
                         </div>
                     </div>
                     
                     <div>
-                        <label class="text-sm text-gray-500">Konten</label>
-                        <div class="bg-gray-50 p-3 rounded mt-1 whitespace-pre-wrap">${item.post_content || item.content || '-'}</div>
+                        <label class="text-sm text-gray-500">Konten Post</label>
+                        <div class="bg-gray-50 p-3 rounded mt-1 whitespace-pre-wrap text-sm max-h-48 overflow-y-auto">${item.post_content || item.content || '-'}</div>
                     </div>
                     
                     ${item.error_message ? `
                         <div>
-                            <label class="text-sm text-gray-500">Error Message</label>
-                            <div class="bg-red-50 text-red-700 p-3 rounded mt-1">${item.error_message}</div>
-                        </div>
-                    ` : ''}
-                    
-                    ${item.image_paths ? `
-                        <div>
-                            <label class="text-sm text-gray-500">Gambar</label>
-                            <div class="mt-1 text-sm text-gray-600">${JSON.parse(item.image_paths).length} gambar</div>
+                            <label class="text-sm text-gray-500">Pesan Error</label>
+                            <div class="bg-red-50 text-red-700 p-3 rounded mt-1 text-sm">${item.error_message}</div>
                         </div>
                     ` : ''}
                 </div>
@@ -577,7 +631,9 @@
                 'success': 'bg-green-100 text-green-800',
                 'failed': 'bg-red-100 text-red-800',
                 'pending_approval': 'bg-yellow-100 text-yellow-800',
-                'blocked': 'bg-pink-100 text-pink-800'
+                'blocked': 'bg-pink-100 text-pink-800',
+                'group_disabled': 'bg-gray-200 text-gray-600',
+                'session_invalid': 'bg-pink-100 text-pink-800'
             };
             return classes[status] || 'bg-gray-100';
         }

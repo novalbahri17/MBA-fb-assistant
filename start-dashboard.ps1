@@ -11,14 +11,15 @@ if (!(Get-Command node -ErrorAction SilentlyContinue)) {
     exit
 }
 
-# Go to web-dashboard directory
+# Go to project directory
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location "$scriptPath\web-dashboard"
+Set-Location $scriptPath
 
-# Install dependencies if needed
-if (!(Test-Path "node_modules")) {
-    Write-Host "📦 Menginstall dependensi..." -ForegroundColor Yellow
-    npm install
+# Check server-v2.js exists
+if (!(Test-Path "server-v2.js")) {
+    Write-Host "❌ server-v2.js tidak ditemukan!" -ForegroundColor Red
+    pause
+    exit
 }
 
 Write-Host "🔥 Memulai server..." -ForegroundColor Green
@@ -28,4 +29,4 @@ Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 
 # Start server
-node server.js
+node server-v2.js

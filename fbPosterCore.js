@@ -63,20 +63,14 @@ async function launchNewBrowser(cookiePath, options = {}) {
   // Get all existing pages (Chrome may have pre-created pages like "New Tab")
   const allPages = await browser.pages();
 
-  // Close all pre-existing pages except the one we'll use
+  // Use the first available page, close extras
   let page;
   if (allPages.length > 0) {
-    // Use the first available page, close others
     page = allPages[0];
     for (let i = 1; i < allPages.length; i++) {
       try { await allPages[i].close(); } catch (e) {}
     }
-    // If the first page is about:blank, close it too and create fresh
-    const url = page.url();
-    if (!url || url === 'about:blank') {
-      try { await page.close(); } catch (e) {}
-      page = await browser.newPage();
-    }
+    // Don't close about:blank page — just reuse it to avoid browser crash
   } else {
     page = await browser.newPage();
   }
@@ -190,7 +184,13 @@ async function openPostDialog(page) {
   }
 
   if (!clicked) {
-    throw new Error('Post box tidak ditemukan di halaman utama');
+    // Grup seperti ini tidak punya post box di halaman utama (composer posting
+    // dimatikan / grup dikunci admin). Tidak akan berubah walau dicoba lagi →
+    // grup dianggap BLACKLIST dan nanti dihapus dari Manajemen Grup oleh server.
+    const postBoxErr = new Error('Post box tidak ditemukan di halaman utama');
+    postBoxErr.postBoxNotFound = true;
+    postBoxErr.blacklistGroup = true;
+    throw postBoxErr;
   }
 
   // STEP 3: TUNGGU dialog "Buat Postingan" terbuka
@@ -755,19 +755,107 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
       await page.goto(`https://facebook.com/groups/${groupId}`, { waitUntil: "networkidle2", timeout: 60000 });
       await delay(6000);
 
-      // Cek apakah terdeteksi spam/blocked
-      const pageContent = await page.evaluate(() => document.body.innerText);
-      if (pageContent.includes('tidak bisa memposting') ||
-          pageContent.includes('sementara diblokir') ||
-          pageContent.includes('spam') ||
-          pageContent.includes('unusual activity')) {
+      // Cek apakah terdeteksi spam/blocked — hanya cek notifikasi yang spesifik untuk akun
+      const spamDetected = await page.evaluate(() => {
+        const text = document.body.innerText;
+        // Harus spesifik — bukan sekadar kata "spam" yang bisa muncul di konten grup
+        return (
+          text.includes('tidak bisa memposting') ||
+          text.includes('sementara diblokir') ||
+          text.includes('Akun Anda telah dinonaktifkan') ||
+          text.includes('Your account has been disabled') ||
+          text.includes('You\'re Temporarily Blocked') ||
+          text.includes('Anda sementara diblokir') ||
+          text.includes('Anda telah diblokir') ||
+          text.includes('You\'ve been blocked') ||
+          text.includes('We have limits to prevent misuse') ||
+          text.includes('unusual activity from your account') ||
+          text.includes('aktivitas tidak biasa dari akun Anda')
+        );
+      });
+      if (spamDetected) {
         return { success: false, groupId, spamDetected: true, error: 'Akun terdeteksi spam/blocked' };
+      }
+
+      // Cek apakah SESI LOGIN EXPIRED — cookies habis / logout / checkpoint login.
+      // Ini WAJIB dicek lebih dulu supaya pengguna langsung tahu harus login ulang,
+      // dan supaya tidak menganggap kegagalan sebagai "sukses".
+      const sessionInvalid = await page.evaluate(() => {
+        const text = document.body.innerText || '';
+        const url = location.href;
+        return (
+          url.includes('/login') ||
+          url.includes('login.php') ||
+          url.includes('/checkpoint') ||
+          url.includes('/recover') ||
+          text.includes('Login Facebook') ||
+          text.includes('Log in to Facebook') ||
+          text.includes('Log Into Facebook') ||
+          text.includes('Anda harus login') ||
+          text.includes('You must log in') ||
+          text.includes('Sesi Anda telah berakhir') ||
+          text.includes('Session Expired') ||
+          text.includes('Masuk ke Facebook') ||
+          text.includes('Email atau Nomor Telepon') ||
+          text.includes('Email or Phone') ||
+          text.includes('Kata Sandi') ||
+          text.includes('Kata sandi') ||
+          text.includes('Forgot password') ||
+          text.includes('Lupa kata sandi')
+        );
+      });
+      if (sessionInvalid) {
+        console.log(`🔐 [${getFormattedTime()}] SESI EXPIRED / LOGIN DIPERLUKAN untuk grup ${groupId}`);
+        return {
+          success: false,
+          groupId,
+          sessionInvalid: true,
+          error: 'Sesi login/cookies tidak valid (expired atau logout). Perbarui cookies akun lalu coba lagi.'
+        };
+      }
+
+      // Cek apakah grup dinonaktifkan — hanya berdasarkan teks eksplisit dari FB
+      const pageUrl = page.url();
+      const isGroupDisabled = await page.evaluate(() => {
+        const text = document.body.innerText;
+        return (
+          text.includes('postingan dinonaktifkan') ||
+          text.includes('posting dinonaktifkan') ||
+          text.includes('diskusi dinonaktifkan') ||
+          text.includes('turned off posting') ||
+          text.includes('posting is turned off') ||
+          text.includes('posts are turned off') ||
+          text.includes('This group no longer exists') ||
+          text.includes('Grup ini sudah tidak ada')
+        );
+      });
+
+      // Cek redirect — jika URL bukan grup yang dituju sama sekali
+      const redirectedAway = !pageUrl.includes('/groups/');
+
+      if (isGroupDisabled || redirectedAway) {
+        const reason = redirectedAway
+          ? `Grup redirect/tidak ditemukan (URL: ${pageUrl})`
+          : 'Grup menonaktifkan posting/diskusi';
+        console.log(`🚫 [${getFormattedTime()}] SKIP grup ${groupId}: ${reason}`);
+        return { success: false, groupId, groupDisabled: true, error: reason };
       }
 
       // Buka dialog post
       if (onProgress) onProgress({ status: 'opening_postbox', attempt });
       await openPostDialog(page);
       await delay(2000); // Extra wait untuk dialog stabil
+
+      // Catat apakah composer benar-benar terbuka (ada [role="dialog"] dengan contenteditable).
+      // Dipakai untuk memastikan "dialog menutup" hanya dianggap sukses jika dialog sempat terbuka.
+      const composerOpened = await page.evaluate(() => {
+        const dialogs = document.querySelectorAll('[role="dialog"]');
+        for (const d of dialogs) {
+          if (d.querySelector('[contenteditable="true"]')) return true;
+        }
+        return false;
+      });
+      console.log(`📝 Composer opened: ${composerOpened}`);
 
       // Siapkan image paths
       const absolutePaths = (imagePaths || []).map(p => {
@@ -1062,6 +1150,9 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
           dialogHasSuccess,
           postBoxVisible,
           createPostDialogOpen,
+          networkError: bodyText.includes('network request timed out') ||
+                        bodyText.includes('composerstorycreatemutation') ||
+                        bodyText.includes('network error'),
           totalCE: allCE.length,
           dialogCount: dialogs.length,
           bodyTextPreview: bodyText.substring(0, 300)
@@ -1070,10 +1161,24 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
 
       console.log(`📝 Post result:`, JSON.stringify(postResult, null, 2));
 
-      // Success criteria: salah satu indikator terpenuhi
-      // JANGAN gunakan postBoxVisible sebagai penentu utama karena Facebook variasi
+      // Deteksi gangguan jaringan / server composer Facebook gagal memproses post.
+      // Kondisi ini BUKAN spam, tapi butuh jeda panjang (auto-pause 1 jam) lalu dicoba ulang.
+      if (!postResult.hasThankYou && !postResult.dialogHasSuccess && postResult.networkError) {
+        const netError = new Error(
+          'Network request timed out. ComposerStoryCreateMutation — composer gagal memproses postingan.'
+        );
+        netError.networkTimeout = true;
+        throw netError;
+      }
+
+      // Success criteria:
+      // - Ada indikator sukses eksplisit (thank you / pending approval), ATAU
+      // - Composer SEMPAT terbuka lalu tertutup (tanda post terkirim).
+      // PENTING: jangan anggap sukses hanya karena dialog "tidak terbuka" —
+      // kalau composer memang gagal dibuka (mis. sesi invalid), itu kegagalan.
       const success = postResult.hasThankYou || postResult.hasPendingApproval ||
-                      postResult.dialogHasSuccess || !postResult.createPostDialogOpen;
+                      postResult.dialogHasSuccess ||
+                      (composerOpened && !postResult.createPostDialogOpen);
 
       if (success) {
         console.log(`✅ [${getFormattedTime()}] Berhasil posting ke grup ${groupId}`);
@@ -1083,20 +1188,49 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
           pendingApproval: postResult.hasPendingApproval || postResult.dialogHasSuccess,
           attempts: attempt
         };
-      } else {
-        console.log(`⚠️ Posting belum terkonfirmasi, mengecek status...`);
-        // Jangan langsung throw - coba cek apakah post sudah terposting dengan cara lain
-        const stillInDialog = postResult.createPostDialogOpen;
-        if (!stillInDialog) {
-          console.log(`✅ Dialog sudah close - posting kemungkinan berhasil`);
-          return { success: true, groupId, pendingApproval: false, attempts: attempt };
-        }
-        throw new Error('Posting tidak terkonfirmasi - dialog masih terbuka');
       }
+
+      console.log(`⚠️ Posting belum terkonfirmasi (composerOpened=${composerOpened})...`);
+      if (!composerOpened) {
+        // Composer tidak pernah terbuka → kemungkinan sesi/login bermasalah
+        return {
+          success: false,
+          groupId,
+          sessionInvalid: true,
+          error: 'Composer tidak dapat dibuka — kemungkinan sesi login/cookies tidak valid.'
+        };
+      }
+      throw new Error('Posting tidak terkonfirmasi - dialog masih terbuka');
 
     } catch (error) {
       lastError = error;
       console.log(`❌ [${getFormattedTime()}] Attempt ${attempt} gagal: ${error.message}`);
+
+      // Grup tanpa post box (blacklist) — percuma retry, langsung laporkan ke server.
+      if (error.blacklistGroup || isPostBoxNotFoundMessage(error.message)) {
+        console.log(`🚫 Grup ${groupId} blacklist (post box tidak ada) — grup akan dihapus dari Manajemen Grup.`);
+        return {
+          success: false,
+          groupId,
+          blacklist: true,
+          postBoxNotFound: true,
+          error: error.message,
+          attempts: attempt
+        };
+      }
+
+      // Network timeout / composer error tidak akan sembuh dengan retry cepat (5 detik).
+      // Langsung kembalikan flag networkTimeout ke server agar diputuskan auto-pause 1 jam.
+      if (isNetworkTimeoutMessage(error.message)) {
+        console.log(`🌐 Network/composer error terdeteksi — berhenti retry cepat, menunggu auto-pause.`);
+        return {
+          success: false,
+          groupId,
+          networkTimeout: true,
+          error: error.message,
+          attempts: attempt
+        };
+      }
 
       if (attempt < maxRetries) {
         console.log(`⏳ Retry dalam ${retryDelay/1000} detik...`);
@@ -1106,6 +1240,225 @@ async function postToGroup(page, groupId, postContent, imagePaths = [], options 
   }
 
   console.log(`❌ [${getFormattedTime()}] FINAL FAIL untuk grup ${groupId}`);
+  const finalNetworkTimeout = isNetworkTimeoutMessage(lastError?.message);
+  const finalBlacklist = isPostBoxNotFoundMessage(lastError?.message);
+  return {
+    success: false,
+    groupId,
+    error: lastError?.message,
+    attempts: maxRetries,
+    ...(finalNetworkTimeout ? { networkTimeout: true } : {}),
+    ...(finalBlacklist ? { blacklist: true, postBoxNotFound: true } : {})
+  };
+}
+
+/**
+ * Cek apakah pesan error menandakan grup blacklist:
+ * tidak ada post box di halaman utama grup (composer dimatikan / grup dikunci).
+ */
+function isPostBoxNotFoundMessage(message) {
+  if (!message) return false;
+  return String(message).toLowerCase().includes('post box tidak ditemukan');
+}
+
+/**
+ * Cek apakah pesan error menandakan gangguan jaringan / composer Facebook gagal.
+ * Contoh: "Network request timed out. ComposerStoryCreateMutation(29230635736522902)"
+ */
+function isNetworkTimeoutMessage(message) {
+  if (!message) return false;
+  const msg = String(message).toLowerCase();
+  return (
+    msg.includes('network request timed out') ||
+    msg.includes('composerstorycreatemutation') ||
+    msg.includes('net::err_') ||
+    msg.includes('timeouterror') ||
+    msg.includes('navigation timeout') ||
+    msg.includes('timeout') ||
+    msg.includes('econnreset') ||
+    msg.includes('socket hang up') ||
+    msg.includes('target closed') ||
+    msg.includes('protocol error')
+  );
+}
+
+/**
+ * Join a Facebook group on an existing page (reuses browser session)
+ * @param {Page} page - Puppeteer page object
+ * @param {string} groupId - Group ID to join
+ * @param {Object} options - Options
+ * @param {Function} [options.onProgress] - Progress callback
+ * @param {number} [options.maxRetries=3] - Max retry attempts
+ * @param {number} [options.retryDelay=5000] - Delay between retries in ms
+ * @returns {Promise<Object>} Result: { success, groupId, alreadyJoined, pendingApproval, error, attempts }
+ */
+async function joinGroupOnPage(page, groupId, options = {}) {
+  const { onProgress, maxRetries = 3, retryDelay = 5000 } = options;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (onProgress) onProgress({ status: 'navigating', attempt });
+      console.log(`\n🔗 [${getFormattedTime()}] JOIN GRUP: ${groupId} (Attempt ${attempt}/${maxRetries})`);
+
+      // Navigate to group page
+      await page.goto(`https://facebook.com/groups/${groupId}`, { waitUntil: "networkidle2", timeout: 60000 });
+      await delay(4000);
+
+      // Check spam/blocked
+      const spamDetected = await page.evaluate(() => {
+        const text = document.body.innerText;
+        return (
+          text.includes('tidak bisa memposting') ||
+          text.includes('sementara diblokir') ||
+          text.includes('Akun Anda telah dinonaktifkan') ||
+          text.includes('Your account has been disabled') ||
+          text.includes("You're Temporarily Blocked") ||
+          text.includes('Anda sementara diblokir') ||
+          text.includes('Anda telah diblokir') ||
+          text.includes("You've been blocked") ||
+          text.includes('We have limits to prevent misuse') ||
+          text.includes('unusual activity from your account') ||
+          text.includes('aktivitas tidak biasa dari akun Anda')
+        );
+      });
+      if (spamDetected) {
+        return { success: false, groupId, spamDetected: true, error: 'Akun terdeteksi spam/blocked' };
+      }
+
+      // Check if group exists / is accessible
+      const pageUrl = page.url();
+      const groupNotFound = await page.evaluate(() => {
+        const text = document.body.innerText;
+        return (
+          text.includes('This group no longer exists') ||
+          text.includes('Grup ini sudah tidak ada') ||
+          text.includes('Page Not Available') ||
+          text.includes('Halaman Tidak Tersedia') ||
+          text.includes('Sorry, this page isn\'t available')
+        );
+      });
+      if (groupNotFound || !pageUrl.includes('/groups/')) {
+        return { success: false, groupId, groupNotFound: true, error: 'Grup tidak ditemukan / tidak tersedia' };
+      }
+
+      // Detect join button state and click
+      if (onProgress) onProgress({ status: 'clicking_join', attempt });
+
+      const joinResult = await page.evaluate(() => {
+        const buttons = document.querySelectorAll('[role="button"], button, a[role="button"]');
+        let alreadyJoined = false;
+        let clicked = false;
+        let pendingApproval = false;
+        let buttonText = '';
+
+        for (const btn of buttons) {
+          const text = (btn.textContent || '').trim().toLowerCase();
+          const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
+          const combined = text + ' ' + ariaLabel;
+
+          // Check if already joined
+          if (combined.includes('joined') || combined.includes('terkait') ||
+              combined.includes('member') || combined.includes('anggota') ||
+              combined.includes('leave') || combined.includes('keluar')) {
+            alreadyJoined = true;
+            buttonText = text || ariaLabel;
+            break;
+          }
+
+          // Check for join / request to join button
+          if (combined.includes('join') || combined.includes('gabung') ||
+              combined.includes('bergabung') || combined.includes('request to join') ||
+              combined.includes('minta bergabung') || combined.includes('request')) {
+            // Make sure it's not a "leave" or "joined" button
+            if (!combined.includes('leave') && !combined.includes('keluar') &&
+                !combined.includes('joined') && !combined.includes('terkait')) {
+              btn.click();
+              clicked = true;
+              buttonText = text || ariaLabel;
+              // Check if it's a "request to join" (pending approval)
+              if (combined.includes('request') || combined.includes('minta')) {
+                pendingApproval = true;
+              }
+              break;
+            }
+          }
+        }
+
+        return { alreadyJoined, clicked, pendingApproval, buttonText };
+      });
+
+      if (joinResult.alreadyJoined) {
+        console.log(`ℹ️ [${getFormattedTime()}] Grup ${groupId} sudah di-join (${joinResult.buttonText})`);
+        return { success: true, groupId, alreadyJoined: true, attempts: attempt };
+      }
+
+      if (joinResult.clicked) {
+        await delay(2000);
+
+        // Verify join was successful — check if button changed or confirmation appeared
+        const verifyResult = await page.evaluate(() => {
+          const text = document.body.innerText;
+          const buttons = document.querySelectorAll('[role="button"], button');
+          let nowJoined = false;
+          for (const btn of buttons) {
+            const btnText = (btn.textContent || '').trim().toLowerCase();
+            if (btnText.includes('joined') || btnText.includes('terkait') ||
+                btnText.includes('member') || btnText.includes('anggota') ||
+                btnText.includes('leave') || btnText.includes('keluar')) {
+              nowJoined = true;
+              break;
+            }
+          }
+          // Also check for confirmation messages
+          const hasConfirmation = text.includes('You are now a member') ||
+                                  text.includes('Anda sekarang anggota') ||
+                                  text.includes('Request sent') ||
+                                  text.includes('Permintaan terkirim') ||
+                                  text.includes('Your request has been sent');
+          return { nowJoined, hasConfirmation };
+        });
+
+        if (verifyResult.nowJoined || verifyResult.hasConfirmation) {
+          console.log(`✅ [${getFormattedTime()}] Berhasil join grup ${groupId}`);
+          return {
+            success: true,
+            groupId,
+            alreadyJoined: false,
+            pendingApproval: joinResult.pendingApproval,
+            attempts: attempt
+          };
+        }
+
+        // Button was clicked but no confirmation — might still work, give it a moment
+        await delay(2000);
+        console.log(`⚠️ [${getFormattedTime()}] Join grup ${groupId} — klik berhasil tapi belum terkonfirmasi`);
+        return {
+          success: true,
+          groupId,
+          alreadyJoined: false,
+          pendingApproval: joinResult.pendingApproval,
+          unconfirmed: true,
+          attempts: attempt
+        };
+      }
+
+      // No join button found
+      lastError = new Error('Tombol join tidak ditemukan di halaman grup');
+      console.log(`❌ [${getFormattedTime()}] ${lastError.message} untuk grup ${groupId}`);
+
+    } catch (error) {
+      lastError = error;
+      console.log(`❌ [${getFormattedTime()}] Attempt ${attempt} gagal: ${error.message}`);
+    }
+
+    if (attempt < maxRetries) {
+      console.log(`⏳ Retry dalam ${retryDelay / 1000} detik...`);
+      await delay(retryDelay);
+    }
+  }
+
+  console.log(`❌ [${getFormattedTime()}] FINAL FAIL join grup ${groupId}`);
   return { success: false, groupId, error: lastError?.message, attempts: maxRetries };
 }
 
@@ -1135,10 +1488,13 @@ async function scanGroups(page, options = {}) {
 module.exports = {
   launchBrowserWithCookies,
   postToGroup,
+  joinGroupOnPage,
   scanGroups,
   scanMyJoinedGroups,
   extractGroupsFromPage,
   getImageFilesFromFolder,
   getFormattedTime,
+  isNetworkTimeoutMessage,
+  isPostBoxNotFoundMessage,
   delay
 };

@@ -22,19 +22,13 @@ echo  ✅ Node.js terdeteksi
 echo.
 
 :: Go to directory
-cd /d "%~dp0\web-dashboard"
+cd /d "%~dp0"
 
-:: Check node_modules
-if not exist "node_modules" (
-    echo  📦 Menginstall dependensi...
-    call npm install
-    if errorlevel 1 (
-        echo  ❌ Gagal install dependensi
-        pause
-        exit /b
-    )
-    echo  ✅ Dependensi terinstall
-    echo.
+:: Check server-v2.js exists
+if not exist "server-v2.js" (
+    echo  ❌ server-v2.js tidak ditemukan!
+    pause
+    exit /b
 )
 
 echo  🔥 Memulai server...
@@ -52,7 +46,7 @@ echo  ================================================
 echo.
 
 :: Run server
-node server.js
+node server-v2.js
 
 :: If server stops
 echo.
